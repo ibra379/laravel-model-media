@@ -133,8 +133,8 @@ You don't need to do anything! Laravel Model Media automatically:
 
 ```mermaid
 graph TD
-    A[UploadedFile] --> B[Model->attachMedia]
-    B --> C{MediaMapping}
+    A[Uploaded File] --> B[Model attachMedia]
+    B --> C[Media Mapping]
     C --> D[Generate Filename]
     D --> E[Store in Storage]
     E --> F[Update Model Column]

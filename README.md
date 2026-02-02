@@ -1,93 +1,169 @@
-# :package_description
+# 🖼️ Laravel Model Media
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/:vendor_slug/:package_slug.svg?style=flat-square)](https://packagist.org/packages/:vendor_slug/:package_slug)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/:vendor_slug/:package_slug/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/:vendor_slug/:package_slug/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![GitHub Code Style Action Status](https://img.shields.io/github/actions/workflow/status/:vendor_slug/:package_slug/fix-php-code-style-issues.yml?branch=main&label=code%20style&style=flat-square)](https://github.com/:vendor_slug/:package_slug/actions?query=workflow%3A"Fix+PHP+code+style+issues"+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/:vendor_slug/:package_slug.svg?style=flat-square)](https://packagist.org/packages/:vendor_slug/:package_slug)
-<!--delete-->
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/dialloibrahima/laravel-model-media.svg?style=flat-square)](https://packagist.org/packages/dialloibrahima/laravel-model-media)
+[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/ibra379/laravel-model-media/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/ibra379/laravel-model-media/actions?query=workflow%3Arun-tests+branch%3Amain)
+[![Total Downloads](https://img.shields.io/packagist/dt/dialloibrahima/laravel-model-media.svg?style=flat-square)](https://packagist.org/packages/dialloibrahima/laravel-model-media)
+[![License](https://img.shields.io/github/license/ibra379/laravel-model-media?style=flat-square)](LICENSE.md)
+
+A lightweight, zero-boilerplate media management trait for Laravel Eloquent models. Attach files directly to your existing model attributes without adding any extra database tables or complex relationships.
+
 ---
-This repo can be used to scaffold a Laravel package. Follow these steps to get started:
 
-1. Press the "Use this template" button at the top of this repo to create a new repo with the contents of this skeleton.
-2. Run "php ./configure.php" to run a script that will replace all placeholders throughout all the files.
-3. Have fun creating your package.
-4. If you need help creating a package, consider picking up our <a href="https://laravelpackage.training">Laravel Package Training</a> video course.
+## 📋 Table of Contents
+- [The Problem](https://github.com/ibra379/laravel-model-media#-the-problem)
+- [The Solution](https://github.com/ibra379/laravel-model-media#-the-solution)
+- [Comparison: Spatie vs. Model Media](https://github.com/ibra379/laravel-model-media#-comparison-spatie-medialibrary-vs-laravel-model-media)
+- [Installation](https://github.com/ibra379/laravel-model-media#-installation)
+- [Quick Start](https://github.com/ibra379/laravel-model-media#-quick-start)
+- [Advanced Usage](https://github.com/ibra379/laravel-model-media#-advanced-usage)
+- [How It Works](https://github.com/ibra379/laravel-model-media#-how-it-works)
+- [Testing](https://github.com/ibra379/laravel-model-media#-testing)
+
 ---
-<!--/delete-->
-This is where your description should go. Limit it to a paragraph or two. Consider adding a small example.
 
-## Support us
+## 😰 The Problem
+Most media management packages for Laravel (like Spatie MediaLibrary) are powerful but "heavy". They often require:
+- A new `media` table in your database.
+- Complex Polymorphic relationships.
+- Manual cleanup of files when models are deleted.
+- Overkill for simple use cases where you just want to store a profile picture or a document path directly on a model.
 
-[<img src="https://github-ads.s3.eu-central-1.amazonaws.com/:package_name.jpg?t=1" width="419px" />](https://spatie.be/github-ad-click/:package_name)
+## ✨ The Solution
+**Laravel Model Media** keeps it simple. It uses your **existing database columns** to store file names.
+- ✅ **No Extra Tables**: Uses the columns you already have.
+- ✅ **Automatic Cleanup**: Deletes old files when you re-upload or delete the model.
+- ✅ **Smart Filenames**: Use model attributes or dynamic Closures for naming.
+- ✅ **Zero Config**: Just add the trait and register your media.
 
-We invest a lot of resources into creating [best in class open source packages](https://spatie.be/open-source). You can support us by [buying one of our paid products](https://spatie.be/open-source/support-us).
+---
 
-We highly appreciate you sending us a postcard from your hometown, mentioning which of our package(s) you are using. You'll find our address on [our contact page](https://spatie.be/about-us). We publish all received postcards on [our virtual postcard wall](https://spatie.be/open-source/postcards).
+## ⚖️ Comparison: Spatie MediaLibrary vs. Laravel Model Media
 
-## Installation
+| Feature | Spatie MediaLibrary | Laravel Model Media |
+| :--- | :---: | :---: |
+| **Philosophy** | "One table for everything" | "Keep it on the model" |
+| **New Tables** | `media` (Polymorphic) | **None** |
+| **Complexity** | High (Conversions, Collections) | **Low** (Simple & Fast) |
+| **Performance** | Extra Join/Query for each model | **Zero extra queries** |
+| **Setup** | Migrations + Trait + Interface | **Trait only** |
+| **Ideal for** | Complex CMS, Multiple galleries | Profile pics, Single documents, Simple uploads |
 
-You can install the package via composer:
+---
+
+## 📦 Installation
 
 ```bash
-composer require :vendor_slug/:package_slug
+composer require dialloibrahima/laravel-model-media
 ```
 
-You can publish and run the migrations with:
+---
 
-```bash
-php artisan vendor:publish --tag=":package_slug-migrations"
-php artisan migrate
-```
+## ⚡ Quick Start
 
-You can publish the config file with:
-
-```bash
-php artisan vendor:publish --tag=":package_slug-config"
-```
-
-This is the contents of the published config file:
+### 1. Prepare your Model
+Add the `HasMedia` trait and register which column should handle media.
 
 ```php
-return [
-];
+namespace App\Models;
+
+use DialloIbrahima\HasMedia\HasMedia;
+use Illuminate\Database\Eloquent\Model;
+
+class User extends Model
+{
+    use HasMedia;
+
+    protected static function booted()
+    {
+        self::registerMediaForColumn(
+            column: 'profile_photo',    // Your DB column
+            directory: 'avatars',       // Storage folder
+            fileName: 'id',             // Name file after the user ID
+            disk: 'public'              // Optional: storage disk (default is 'public')
+        );
+    }
+}
 ```
 
-Optionally, you can publish the views using
-
-```bash
-php artisan vendor:publish --tag=":package_slug-views"
-```
-
-## Usage
+### 2. Handle Uploads
+Call `attachMedia()` in your controller.
 
 ```php
-$variable = new VendorName\Skeleton();
-echo $variable->echoPhrase('Hello, VendorName!');
+public function update(Request $request, User $user)
+{
+    if ($request->hasFile('photo')) {
+        $user->attachMedia($request->file('photo'), 'profile_photo');
+    }
+
+    return back();
+}
 ```
 
-## Testing
+### 3. Retrieve URLs
+```php
+<img src="{{ $user->getMediaUrl('profile_photo') }}">
+```
+
+---
+
+## 🔧 Advanced Usage
+
+### Dynamic Filenames via Closure
+If you need complex naming logic (like adding a random string or using another attribute), use a Closure:
+
+```php
+self::registerMediaForColumn(
+    column: 'invoice_pdf',
+    directory: 'invoices',
+    fileName: fn ($model, $file) => "invoice-{$model->number}-" . Str::random(5)
+);
+```
+
+### Automatic Cleanup
+You don't need to do anything! Laravel Model Media automatically:
+- **Deletes the old file** when you re-upload a new one to the same column.
+- **Deletes all associated files** when the model is deleted (via Model Observer).
+
+---
+
+## 🏗️ How It Works
+
+```mermaid
+graph TD
+    A[UploadedFile] --> B[Model->attachMedia]
+    B --> C{MediaMapping}
+    C --> D[Generate Filename]
+    D --> E[Store in Storage]
+    E --> F[Update Model Column]
+    F --> G[Cleanup Old File]
+    H[Model Deleted] --> I[Observer Triggers]
+    I --> J[Delete all registered files from Storage]
+```
+
+---
+
+## 🧪 Testing
+
+The package includes a robust test suite. You can run it via composer:
 
 ```bash
 composer test
 ```
 
-## Changelog
+We test for:
+- ✅ Correct storage path and filename generation.
+- ✅ Automatic deletion of old media on update.
+- ✅ Garbage collection of files on model deletion.
+- ✅ Prediction and predictability using faked storage and string overrides.
 
-Please see [CHANGELOG](CHANGELOG.md) for more information on what has changed recently.
+---
 
-## Contributing
-
+## 🤝 Contributing
 Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
-## Security Vulnerabilities
-
-Please review [our security policy](../../security/policy) on how to report security vulnerabilities.
-
-## Credits
-
-- [:author_name](https://github.com/:author_username)
-- [All Contributors](../../contributors)
-
-## License
-
+## 📄 License
 The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
+
+## 👨‍💻 Credits
+- [Ibrahima Diallo](https://github.com/ibra379)
+- [All Contributors](../../contributors)

@@ -1,9 +1,12 @@
 # 🖼️ Laravel Model Media
 
-[![Latest Version on Packagist](https://img.shields.io/packagist/v/dialloibrahima/laravel-model-media.svg?style=flat-square)](https://packagist.org/packages/dialloibrahima/laravel-model-media)
-[![GitHub Tests Action Status](https://img.shields.io/github/actions/workflow/status/ibra379/laravel-model-media/run-tests.yml?branch=main&label=tests&style=flat-square)](https://github.com/ibra379/laravel-model-media/actions?query=workflow%3Arun-tests+branch%3Amain)
-[![Total Downloads](https://img.shields.io/packagist/dt/dialloibrahima/laravel-model-media.svg?style=flat-square)](https://packagist.org/packages/dialloibrahima/laravel-model-media)
-[![License](https://img.shields.io/github/license/ibra379/laravel-model-media?style=flat-square)](LICENSE.md)
+<p align="center">
+<a href="https://packagist.org/packages/dialloibrahima/laravel-model-media"><img src="https://img.shields.io/packagist/v/dialloibrahima/laravel-model-media.svg?style=flat-square" alt="Latest Version on Packagist"></a>
+<a href="https://github.com/ibra379/laravel-model-media/actions?query=workflow%3Arun-tests+branch%3Amain"><img src="https://img.shields.io/github/actions/workflow/status/ibra379/laravel-model-media/run-tests.yml?branch=main&label=tests&style=flat-square" alt="GitHub Tests Action Status"></a>
+<a href="https://packagist.org/packages/dialloibrahima/laravel-model-media"><img src="https://img.shields.io/packagist/dt/dialloibrahima/laravel-model-media.svg?style=flat-square" alt="Total Downloads"></a>
+<a href="https://www.php.net/"><img src="https://img.shields.io/badge/php-%5E8.4-8892BF.svg?style=flat-square" alt="PHP Version"></a>
+<a href="https://laravel.com/"><img src="https://img.shields.io/badge/laravel-11.x%20%7C%2012.x-FF2D20.svg?style=flat-square" alt="Laravel Version"></a>
+</p>
 
 A lightweight, zero-boilerplate media management trait for Laravel Eloquent models. Attach files directly to your existing model attributes without adding any extra database tables or complex relationships.
 

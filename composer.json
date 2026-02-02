@@ -37,14 +37,14 @@
     },
     "autoload": {
         "psr-4": {
-            "VendorName\\Skeleton\\": "src/"
+            "DialloIbrahima\\HasMedia\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "VendorName\\Skeleton\\Tests\\": "tests/",
+            "Tests\\": "tests/",
             "Workbench\\App\\": "workbench/app/",
-            "VendorName\\Skeleton\\Database\\Factories\\": "database/factories/"
+            "Workbench\\Database\\Factories\\": "workbench/database/factories/"
         }
     },
     "scripts": {
@@ -65,7 +65,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "DialloIbrahima\\SmartCache\\LaravelModelMediaServiceProvider"
+                "DialloIbrahima\\HasMedia\\LaravelModelMediaServiceProvider"
             ]
         }
     },

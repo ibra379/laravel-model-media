@@ -131,17 +131,7 @@ You don't need to do anything! Laravel Model Media automatically:
 
 ## 🏗️ How It Works
 
-```mermaid
-graph TD
-    A[Uploaded File] --> B[Model attachMedia]
-    B --> C[Media Mapping]
-    C --> D[Generate Filename]
-    D --> E[Store in Storage]
-    E --> F[Update Model Column]
-    F --> G[Cleanup Old File]
-    H[Model Deleted] --> I[Observer Triggers]
-    I --> J[Delete all registered files from Storage]
-```
+![Full Media Lifecycle (Attach, Update, Delete)](resources/art/flow.png)
 
 ---
 

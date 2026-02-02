@@ -15,7 +15,8 @@ return new class extends Migration
     {
         Schema::create('media_tests', function (Blueprint $table) {
             $table->id();
-            $table->text('name')->nullable();
+            $table->string('name')->nullable();
+            $table->string('name_with_id')->nullable();
             $table->text('slug')->nullable();
             $table->timestamps();
 

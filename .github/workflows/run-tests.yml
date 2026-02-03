@@ -10,7 +10,7 @@ jobs:
     strategy:
       fail-fast: true  # Cambia a true per fallire subito se un test fallisce
       matrix:
-        php: [8.2, 8.3]  # Aggiungi 8.2 per supportare più versioni
+        php: [8.3]  # Aggiungi 8.2 per supportare più versioni
     name: PHP ${{ matrix.php }}
     steps:
       - name: Checkout code

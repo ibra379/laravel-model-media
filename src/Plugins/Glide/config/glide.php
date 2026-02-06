@@ -33,7 +33,16 @@ return [
     | php artisan tinker
     | >>> Str::random(32)
     |
-    | IMPORTANT: Enable in production!
+    | ⚠️  SECURITY WARNING: You MUST enable signature verification in production!
+    |
+    | Set in your .env file:
+    | GLIDE_SECURE=true
+    | GLIDE_SIGNATURE_KEY=your-32-character-random-string
+    |
+    | Without signature verification, attackers can:
+    | 1. Generate unlimited image transformations causing DoS
+    | 2. Fill up your disk space with cached variations
+    | 3. Consume excessive bandwidth and CPU resources
     |
     */
     'secure' => env('GLIDE_SECURE', false),

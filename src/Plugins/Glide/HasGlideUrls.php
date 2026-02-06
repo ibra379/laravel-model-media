@@ -230,7 +230,14 @@ trait HasGlideUrls
             return false;
         }
 
-        $mimeType = mime_content_type($path);
+        // Use finfo instead of deprecated mime_content_type for better security
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $path);
+        finfo_close($finfo);
+
+        if ($mimeType === false) {
+            return false;
+        }
 
         return in_array($mimeType, $this->glideAllowedMimeTypes);
     }
@@ -349,11 +356,27 @@ trait HasGlideUrls
             return null;
         }
 
+        $absolutePath = Storage::disk($disk)->path($fullPath);
+        
+        // Security: Verify the resolved absolute path is within the expected directory
+        $baseDirectory = Storage::disk($disk)->path($directory);
+        $realBasePath = realpath($baseDirectory);
+        $realFilePath = realpath($absolutePath);
+        
+        // If realpath fails or path is outside the base directory, reject it
+        if ($realBasePath === false || $realFilePath === false) {
+            return null;
+        }
+        
+        if (!str_starts_with($realFilePath, $realBasePath . DIRECTORY_SEPARATOR)) {
+            return null;
+        }
+
         return [
             'mapping' => $mapping,
             'fullPath' => $fullPath,
             'disk' => $disk,
-            'absolutePath' => Storage::disk($disk)->path($fullPath),
+            'absolutePath' => $realFilePath,
         ];
     }
 

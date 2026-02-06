@@ -31,7 +31,16 @@ final readonly class MediaMapping
             ? $model->getAttribute($this->fileName)
             : ($this->fileName)($model, $file);
 
-        return sprintf('%s.%s', $fileName, $file->getClientOriginalExtension());
+        // Security: Use server-detected extension instead of client-provided extension
+        // to prevent extension spoofing attacks
+        $extension = $file->extension();
+        
+        // If extension detection fails, fall back to guessing from MIME type
+        if (empty($extension)) {
+            $extension = $file->guessExtension() ?? 'bin';
+        }
+
+        return sprintf('%s.%s', $fileName, $extension);
     }
 
     public function getDisk(): string

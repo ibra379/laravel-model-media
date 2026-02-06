@@ -86,8 +86,18 @@ class GlideCacheObserver
         // The cache structure is: {cache_dir}/{path_hash}/{filename}
         // We need to find and delete all cached versions
 
-        // Normalize the path
-        $normalizedPath = ltrim($filePath, '/');
+        // Security: Properly normalize the path using preg_replace
+        // Remove leading slashes and collapse multiple slashes
+        $normalizedPath = preg_replace('#^/+#', '', $filePath);
+        $normalizedPath = preg_replace('#/+#', '/', $normalizedPath);
+        
+        // Security: Prevent path traversal attacks
+        if (str_contains($normalizedPath, '..')) {
+            logger()->warning('Path traversal attempt detected in cache cleanup', [
+                'path' => $filePath,
+            ]);
+            return;
+        }
 
         // Get the cache path for this file
         $cachePath = $cacheDir . '/' . $normalizedPath;

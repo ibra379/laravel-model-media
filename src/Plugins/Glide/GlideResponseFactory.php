@@ -73,7 +73,7 @@ final class GlideResponseFactory implements ResponseFactoryInterface
      * Get the content type from the cached file.
      *
      * First tries to get the MIME type from the filesystem,
-     * then falls back to extension-based detection.
+     * then uses finfo for reliable MIME type detection as a fallback.
      *
      * @param FilesystemOperator $cache The cache file system.
      * @param string $path The cached file path.
@@ -88,10 +88,40 @@ final class GlideResponseFactory implements ResponseFactoryInterface
                 return $mimeType;
             }
         } catch (FilesystemException) {
-            // Fall through to extension-based detection
+            // Fall through to finfo-based detection
         }
 
-        // Fallback to extension-based detection
+        // Security: Use finfo for reliable MIME type detection instead of extension-based
+        // This prevents MIME type spoofing attacks
+        try {
+            // Get the actual file content for detection
+            $stream = $cache->readStream($path);
+            $tmpFile = tmpfile();
+            
+            if ($tmpFile === false) {
+                throw new Exception('Could not create temporary file');
+            }
+            
+            stream_copy_to_stream($stream, $tmpFile);
+            fclose($stream);
+            
+            // Get the temp file path
+            $tmpFilePath = stream_get_meta_data($tmpFile)['uri'];
+            
+            // Use finfo to detect MIME type
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $detectedMimeType = finfo_file($finfo, $tmpFilePath);
+            finfo_close($finfo);
+            fclose($tmpFile);
+            
+            if ($detectedMimeType !== false && $detectedMimeType !== 'application/octet-stream') {
+                return $detectedMimeType;
+            }
+        } catch (Exception) {
+            // Fall through to extension-based detection as last resort
+        }
+
+        // Last resort: Fallback to extension-based detection
         if (preg_match('/\.(jpe?g|png|gif|webp|avif|bmp|svg)/i', $path, $matches)) {
             $extension = mb_strtolower($matches[1]);
 

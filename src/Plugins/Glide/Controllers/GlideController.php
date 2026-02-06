@@ -115,6 +115,20 @@ class GlideController extends Controller
         $sourcePath = config('model-media-glide.source', storage_path('app/public'));
         $fullPath = $sourcePath . '/' . $path;
 
+        // Security: Prevent path traversal attacks
+        $realSourcePath = realpath($sourcePath);
+        $realFullPath = realpath($fullPath);
+
+        // If realpath returns false, file doesn't exist
+        if ($realFullPath === false) {
+            abort(404, "Image file not found: $path");
+        }
+
+        // Verify the resolved path is within the source directory
+        if (!str_starts_with($realFullPath, $realSourcePath . DIRECTORY_SEPARATOR)) {
+            abort(403, "Access denied: Path traversal detected");
+        }
+
         if (!file_exists($fullPath)) {
             abort(404, "Image file not found: $path");
         }
@@ -135,8 +149,23 @@ class GlideController extends Controller
         $sourcePath = config('model-media-glide.source', storage_path('app/public'));
         $fullPath = $sourcePath . '/' . $path;
 
-        // Get MIME type
-        $mimeType = mime_content_type($fullPath);
+        // Security: Prevent path traversal attacks
+        $realSourcePath = realpath($sourcePath);
+        $realFullPath = realpath($fullPath);
+
+        // Verify the resolved path is within the source directory
+        if ($realFullPath === false || !str_starts_with($realFullPath, $realSourcePath . DIRECTORY_SEPARATOR)) {
+            abort(403, "Access denied: Invalid file path");
+        }
+
+        // Get MIME type using finfo (more secure than deprecated mime_content_type)
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $realFullPath);
+        finfo_close($finfo);
+
+        if ($mimeType === false) {
+            abort(422, "Cannot determine MIME type for file '$path'");
+        }
 
         // Check if file is an allowed image type
         if (!in_array($mimeType, $this->allowedMimeTypes)) {
@@ -149,22 +178,64 @@ class GlideController extends Controller
             );
         }
 
-        // Additional validation: try to get image info
-        try {
-            $imageInfo = @getimagesize($fullPath);
+        // Security: For SVG files, perform additional validation to prevent XSS
+        if ($mimeType === 'image/svg+xml') {
+            $this->validateSvgFile($realFullPath);
+        }
 
-            if ($imageInfo === false) {
+        // Additional validation: try to get image info (except for SVG)
+        if ($mimeType !== 'image/svg+xml') {
+            try {
+                $imageInfo = @getimagesize($realFullPath);
+
+                if ($imageInfo === false) {
+                    abort(
+                        422,
+                        "Cannot process file '$path': " .
+                        "file appears to be corrupted or not a valid image format."
+                    );
+                }
+            } catch (Exception $e) {
                 abort(
                     422,
-                    "Cannot process file '$path': " .
-                    "file appears to be corrupted or not a valid image format."
+                    "Cannot validate image '$path': " . $e->getMessage()
                 );
             }
-        } catch (Exception $e) {
-            abort(
-                422,
-                "Cannot validate image '$path': " . $e->getMessage()
-            );
+        }
+    }
+
+    /**
+     * Validate SVG file for potential XSS attacks
+     *
+     * @param string $filePath Absolute file path
+     * @return void
+     * @throws HttpException
+     */
+    protected function validateSvgFile(string $filePath): void
+    {
+        $content = file_get_contents($filePath);
+        
+        if ($content === false) {
+            abort(422, "Cannot read SVG file");
+        }
+
+        // Check for dangerous tags and attributes that could execute scripts
+        $dangerousPatterns = [
+            '/<script/i',
+            '/javascript:/i',
+            '/on\w+\s*=/i', // Event handlers like onclick, onload, etc.
+            '/<iframe/i',
+            '/<embed/i',
+            '/<object/i',
+        ];
+
+        foreach ($dangerousPatterns as $pattern) {
+            if (preg_match($pattern, $content)) {
+                abort(
+                    422,
+                    "SVG file contains potentially malicious content and cannot be processed"
+                );
+            }
         }
     }
 

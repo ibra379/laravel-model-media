@@ -522,7 +522,7 @@ return [
 
 ### Security
 
-Enable URL signing to prevent unauthorized image manipulation (DoS protection):
+⚠️ **IMPORTANT**: Enable URL signing in production to prevent unauthorized image manipulation and DoS attacks:
 
 ```env
 GLIDE_SECURE=true
@@ -537,6 +537,16 @@ php artisan tinker
 ```
 
 When secure mode is enabled, all Glide URLs will be cryptographically signed.
+
+**Built-in Security Features:**
+
+- ✅ **Path Traversal Protection**: Automatic validation prevents accessing files outside intended directories
+- ✅ **MIME Type Validation**: Uses `finfo_file()` for reliable file type detection, not client-provided extensions
+- ✅ **SVG XSS Prevention**: Validates SVG content to block malicious scripts and event handlers
+- ✅ **Server-Side Extension Detection**: File extensions based on actual content, not client filenames
+- ✅ **Boundary Validation**: All file paths validated with `realpath()` to stay within allowed directories
+
+For complete security documentation and best practices, see [SECURITY.md](SECURITY.md).
 
 ### Automatic Cache Cleanup
 

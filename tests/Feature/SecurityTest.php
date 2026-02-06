@@ -194,14 +194,18 @@ test('allows clean SVG files', function () {
 });
 
 test('uses server-detected MIME type not client extension', function () {
-    // This test verifies that MediaMapping uses server-side detection
-    // Create a PHP file disguised as JPG (for upload simulation)
-    $phpContent = '<?php echo "evil"; ?>';
-    
-    // Note: This test would need to be in HasMediaTest with actual file upload
-    // Here we're just documenting the expected behavior
+    // Note: This behavior is validated in MediaMapping::getFileName() and tested
+    // through integration tests with actual file uploads in UploadSecurityTest.php
+    // 
+    // Expected behavior:
+    // - Client uploads "malicious.php.jpg"
+    // - Server detects MIME as "image/jpeg"
+    // - File stored with .jpg extension (server-detected)
+    // - Does NOT preserve .php from client filename
+    //
+    // See UploadSecurityTest::test('uses server-detected file extension instead of client-provided')
     expect(true)->toBeTrue();
-});
+})->skip('Documentation test - actual validation in UploadSecurityTest');
 
 test('prevents accessing files with null bytes in path', function () {
     // Attempt null byte injection

@@ -99,7 +99,7 @@ final class GlideResponseFactory implements ResponseFactoryInterface
             $tmpFile = tmpfile();
             
             if ($tmpFile === false) {
-                throw new Exception('Could not create temporary file');
+                throw new Exception('Could not create temporary file for MIME detection. This may be due to insufficient disk space, incorrect permissions on the temp directory, or system resource limits.');
             }
             
             stream_copy_to_stream($stream, $tmpFile);

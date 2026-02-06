@@ -1,4 +1,4 @@
-<p align="center"># 🖼️ Laravel Model Media</p>
+<img src="art/banner.png" alt="Laravel Model Media" width="100%">
 
 <p align="center">
 <a href="https://packagist.org/packages/dialloibrahima/laravel-model-media"><img src="https://img.shields.io/packagist/v/dialloibrahima/laravel-model-media.svg?style=flat-square" alt="Latest Version on Packagist"></a>

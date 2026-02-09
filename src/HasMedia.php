@@ -38,17 +38,21 @@ trait HasMedia
         $mapping = self::getMediaMappingForColumn($column);
 
         $directory = $mapping->getDirectory();
+        $oldFileName = $this->getAttribute($column);
+        $newFileName = $mapping->getFileName($this, $file);
 
-        $fileName = $mapping->getFileName($this, $file);
         $stored = $file->storeAs(
             $directory,
-            $fileName,
+            $newFileName,
             $mapping->getDisk()
         );
 
         if ($stored) {
-            $this->detachMedia($column);
-            $this->setAttribute($column, $fileName);
+            // Delete an old file only if storage succeeded AND filenames differ
+            if ($oldFileName && $oldFileName !== $newFileName) {
+                Storage::disk($mapping->getDisk())->delete(sprintf('%s/%s', $directory, $oldFileName));
+            }
+            $this->setAttribute($column, $newFileName);
         }
 
         return boolval($stored);

@@ -70,6 +70,9 @@ describe('GlideCacheObserver', function () {
             expect(File::exists($cachedFile1))->toBeTrue();
             expect(File::exists($cachedFile2))->toBeTrue();
 
+            // Update slug so the new filename will be different
+            $model->fill(['slug' => 'updated-slug']);
+            
             // Update with new image
             $model->attachMedia(
                 UploadedFile::fake()->image('updated.jpg', 200, 200),

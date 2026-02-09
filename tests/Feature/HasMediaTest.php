@@ -120,4 +120,28 @@ describe('HasMedia trait', function () {
         $url = $model->getMediaUrl('name_with_id');
         expect($url)->toBe(Storage::disk('public')->url('documents/'.$model->name_with_id));
     });
+
+    it('preserves file when attaching media with identical filename', function () {
+        /** @var MediaTest $model */
+        $model = MediaTest::factory()->create(['slug' => 'same-slug']);
+
+        // Attach initial file
+        $model->attachMedia(
+            UploadedFile::fake()->create('test.jpg', 100),
+            'name'
+        );
+        $fileName = $model->name;
+
+        Storage::disk('public')->assertExists('documents/'.$fileName);
+
+        // Attach another file with same slug (will generate same filename)
+        $model->attachMedia(
+            UploadedFile::fake()->create('test.jpg', 100),
+            'name'
+        );
+
+        // File should still exist (not deleted because filenames are identical)
+        Storage::disk('public')->assertExists('documents/'.$fileName);
+        expect($model->name)->toBe($fileName);
+    });
 });

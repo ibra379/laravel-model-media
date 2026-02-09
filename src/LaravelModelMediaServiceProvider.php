@@ -2,9 +2,11 @@
 
 namespace DialloIbrahima\HasMedia;
 
-use DialloIbrahima\HasMedia\Plugins\Glide\GlidePlugin;
 use League\Glide\ServerFactory;
 use League\Glide\Signatures\Signature;
+use League\Glide\Urls\UrlBuilderFactory;
+use DialloIbrahima\HasMedia\Plugins\Glide\GlideResponseFactory;
+use Illuminate\Support\Facades\Route;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -19,49 +21,65 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
          */
         $package
             ->name('laravel-model-media')
-            ->hasConfigFile();
+            ->hasConfigFile('laravel-model-media')
+            ->hasConfigFile('model-media-glide');
     }
 
     public function packageRegistered(): void
     {
-        // Register Glide Plugin configuration and services directly here
-        // to avoid issues with php artisan optimize (nested providers)
-        $this->mergeConfigFrom(
-            __DIR__ . '/Plugins/Glide/config/glide.php',
-            'model-media-glide'
-        );
-
         if (class_exists(ServerFactory::class)) {
             // Register Glide Signature singleton
             $this->app->singleton(Signature::class, function ($app) {
                 $config = config('model-media-glide');
-
                 return new Signature($config['signature_key'] ?? '');
             });
 
-            // Register plugin instance as singleton
-            $this->app->singleton(GlidePlugin::class);
+            // Register Glide server instance as singleton ('media.glide')
+            $this->app->singleton('media.glide', function ($app) {
+                $config = config('model-media-glide', []);
 
-            // Register plugin services (Glide server)
-            $plugin = $this->app->make(GlidePlugin::class);
-            $plugin->register();
+                return ServerFactory::create([
+                    'response' => new GlideResponseFactory(),
+                    'source' => $config['source'] ?? storage_path('app/public'),
+                    'cache' => $config['cache'] ?? storage_path('app/glide-cache'),
+                    'max_image_size' => $config['max_image_size'] ?? 2000 * 2000,
+                    'presets' => $config['presets'] ?? [],
+                    'driver' => $config['driver'] ?? 'gd',
+                    'watermarks' => $config['watermarks'] ?? storage_path('app/watermarks'),
+                ]);
+            });
+
+            // Register UrlBuilder as singleton ('media.glide.url')
+            $this->app->singleton('media.glide.url', function ($app) {
+                $baseUrl = '/' . ltrim(config('model-media-glide.route_prefix', 'media'), '/');
+                $signKey = config('model-media-glide.secure', false)
+                    ? config('model-media-glide.signature_key')
+                    : null;
+
+                return UrlBuilderFactory::create($baseUrl, $signKey);
+            });
         }
     }
 
     public function packageBooted(): void
     {
-        // Bootstrap Glide plugin (load routes)
         if (class_exists(ServerFactory::class)) {
-            /** @var GlidePlugin $plugin */
-            $plugin = $this->app->make(GlidePlugin::class);
-            $plugin->boot();
-
-            // Publish Glide config
-            if ($this->app->runningInConsole()) {
-                $this->publishes([
-                    __DIR__ . '/Plugins/Glide/config/glide.php' => config_path('model-media-glide.php'),
-                ], 'model-media-glide-config');
-            }
+            // Load Glide routes
+            $this->registerGlideRoutes();
         }
+    }
+
+    protected function registerGlideRoutes(): void
+    {
+        if (!config('model-media-glide.routes_enabled', true)) {
+            return;
+        }
+
+        Route::middleware(config('model-media-glide.middleware', ['web']))
+            ->prefix(config('model-media-glide.route_prefix', 'media'))
+            ->as('media.')
+            ->group(function () {
+                require __DIR__ . '/Plugins/Glide/routes/glide.php';
+            });
     }
 }

@@ -22,7 +22,8 @@ trait HasMedia
         string         $directory,
         string|Closure $fileName,
         string         $disk = 'public'
-    ): void {
+    ): void
+    {
         $mapping = new MediaMapping(
             column: $column,
             directory: $directory,
@@ -53,6 +54,7 @@ trait HasMedia
                 Storage::disk($mapping->getDisk())->delete(sprintf('%s/%s', $directory, $oldFileName));
             }
             $this->setAttribute($column, $newFileName);
+            $this->save();
         }
 
         return boolval($stored);
@@ -60,14 +62,14 @@ trait HasMedia
 
     public function detachMedia(?string $column): bool
     {
-        if (! $column) {
+        if (!$column) {
             return true;
         }
 
         $mapping = self::getMediaMappingForColumn($column);
 
         $fileName = $this->getAttribute($column);
-        if (! $fileName) {
+        if (!$fileName) {
             return true;
         }
         $directory = $mapping->getDirectory();
@@ -82,7 +84,7 @@ trait HasMedia
         $mapping = self::getMediaMappingForColumn($column);
 
         $fileName = $this->getAttribute($column);
-        if (! $fileName) {
+        if (!$fileName) {
             return null;
         }
 
@@ -99,7 +101,7 @@ trait HasMedia
     private static function getMediaMappingForColumn(string $column): ?MediaMapping
     {
         $mapping = self::$mediaMappings[$column] ?? null;
-        assert($mapping instanceof MediaMapping, 'No media mapping found for column: '.$column);
+        assert($mapping instanceof MediaMapping, 'No media mapping found for column: ' . $column);
         return $mapping;
     }
 }

@@ -126,8 +126,8 @@ Call `attachMedia()` in your controller.
 public function update(Request $request, User $user)
 {
     if ($request->hasFile('photo')) {
+        // Method automatically saves the model for you
         $user->attachMedia($request->file('photo'), 'profile_photo');
-        $user->save();
     }
 
     return back();
@@ -185,6 +185,7 @@ public function attachMedia(UploadedFile $file, string $column): bool
 - Stores the file to the configured disk and directory
 - Automatically deletes any previously attached file
 - Updates the model attribute with the new filename
+- **Automatically calls `$this->save()`** to persist the changes
 
 #### `detachMedia()`
 

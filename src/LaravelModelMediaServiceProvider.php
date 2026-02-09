@@ -63,6 +63,18 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
 
     public function packageBooted(): void
     {
+        if ($this->app->runningInConsole()) {
+            $this->publishes([
+                __DIR__ . '/../config/laravel-model-media.php' => config_path('laravel-model-media.php'),
+            ], 'laravel-model-media-config');
+
+            if (class_exists(ServerFactory::class)) {
+                $this->publishes([
+                    __DIR__ . '/../config/model-media-glide.php' => config_path('model-media-glide.php'),
+                ], 'model-media-glide-config');
+            }
+        }
+
         if (class_exists(ServerFactory::class)) {
             // Load Glide routes
             $this->registerGlideRoutes();

@@ -2,6 +2,11 @@
 
 All notable changes to `laravel-model-media` will be documented in this file.
 
+## v2.0.6 - 2026-02-10
+
+- **Improved**: Complete documentation refactor with premium look and clearer configuration instructions.
+- **Added**: Explicit configuration publishing commands and tags documentation.
+
 ## v2.0.5 - 2026-02-10
 
 - **Fixed**: Glide signature loss after `php artisan optimize`.

@@ -75,7 +75,8 @@
     "extra": {
         "laravel": {
             "providers": [
-                "DialloIbrahima\\HasMedia\\LaravelModelMediaServiceProvider"
+                "DialloIbrahima\\HasMedia\\LaravelModelMediaServiceProvider",
+                "DialloIbrahima\\HasMedia\\Plugins\\Glide\\GlideServiceProvider"
             ]
         }
     },

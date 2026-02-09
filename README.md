@@ -10,7 +10,8 @@
 
 A lightweight, zero-boilerplate media management trait for Laravel Eloquent models. Attach files directly to your existing model attributes without adding any extra database tables or complex relationships.
 
-**Includes a powerful Glide plugin** for on-the-fly image manipulation: resize, crop, convert formats, and generate responsive images.
+> [!TIP]
+> **Includes a powerful Glide integration** for on-the-fly image manipulation: resize, crop, convert formats, and generate responsive images.
 
 ---
 
@@ -111,12 +112,15 @@ class User extends Model
         self::registerMediaForColumn(
             column: 'profile_photo',    // Your DB column
             directory: 'avatars',       // Storage folder
-            fileName: 'id',             // Name file after a model attribute
+            fileName: 'id',             // Name file after a model attribute (or use a Closure)
             disk: 'public'              // Optional: storage disk (default is 'public')
         );
     }
 }
 ```
+
+> [!NOTE]
+> The `fileName` parameter can be a model attribute name (like `'slug'`) or a `Closure` for more complex naming logic.
 
 ### 2. Handle Uploads
 
@@ -126,13 +130,16 @@ Call `attachMedia()` in your controller.
 public function update(Request $request, User $user)
 {
     if ($request->hasFile('photo')) {
-        // Method automatically saves the model for you
+        // This method automatically saves the model for you!
         $user->attachMedia($request->file('photo'), 'profile_photo');
     }
 
     return back();
 }
 ```
+
+> [!IMPORTANT]
+> Since version 2.0.3, `attachMedia` automatically calls `$this->save()`. You don't need to manually save the model unless you perform other modifications.
 
 ### 3. Retrieve URLs
 
@@ -221,7 +228,8 @@ public function getMediaMappings(): array
 
 Adds Glide image manipulation capabilities. Requires `league/glide` package.
 
-> ⚠️ **Important:** This trait only works with image files. It validates MIME types and throws `InvalidMediaTypeException` for non-image files.
+> [!CAUTION]
+> This trait only works with image files. It validates MIME types and throws `InvalidMediaTypeException` for non-image files.
 
 #### `getGlideUrl()`
 
@@ -398,11 +406,28 @@ class User extends Model
 }
 ```
 
-Publish the Glide configuration (optional):
+Publish the Glide configuration:
 
 ```bash
 php artisan vendor:publish --tag=model-media-glide-config
 ```
+
+### ⚙️ Configuration
+
+You can publish the configuration files to customize the package behavior:
+
+```bash
+# Publish all configurations
+php artisan vendor:publish --provider="DialloIbrahima\HasMedia\LaravelModelMediaServiceProvider"
+
+# Or use specific tags
+php artisan vendor:publish --tag=laravel-model-media-config
+php artisan vendor:publish --tag=model-media-glide-config
+```
+
+> [!NOTE]
+> - `laravel-model-media-config`: General settings (currently minimal).
+> - `model-media-glide-config`: Glide-specific settings (presets, security, directories).
 
 ### Glide Basic Usage
 
@@ -495,6 +520,8 @@ Generate responsive image sets automatically:
 
 ### Glide Configuration
 
+The configuration file allows you to customize routes, security, and image presets.
+
 ```php
 // config/model-media-glide.php
 return [
@@ -503,7 +530,7 @@ return [
     'route_prefix' => 'media',
     'middleware' => ['web'],
 
-    // Security
+    // Security (URL Signing)
     'secure' => env('GLIDE_SECURE', false),
     'signature_key' => env('GLIDE_SIGNATURE_KEY'),
 
@@ -513,13 +540,27 @@ return [
     'driver' => 'gd', // or 'imagick'
     'max_image_size' => 2000 * 2000,
 
-    // Presets
+    // Presets (reusable transformation sets)
     'presets' => [
+        'avatar' => ['w' => 110, 'h' => 110, 'fit' => 'crop'],
         'thumbnail' => ['w' => 200, 'h' => 200, 'fit' => 'crop'],
         // ...
     ],
 ];
 ```
+
+> [!TIP]
+> You can create as many presets as you need to maintain consistency across your application.
+
+### 🚀 Optimization Support
+
+The package is fully compatible with Laravel's optimization system. You can safely run:
+
+```bash
+php artisan optimize
+```
+
+This will cache your configuration and routes while maintaining full functionality, including secure image signatures.
 
 ### Security
 

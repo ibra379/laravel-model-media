@@ -60,7 +60,7 @@ class GlideController extends Controller
         try {
             // Process and return transformed image
             // Glide automatically caches the result
-            return $server->getImageResponse($path, request()->all());
+            return $server->getImageResponse($path, request()->query());
         } catch (Exception $e) {
             // Handle Glide processing errors
             abort(500, 'Error processing image: ' . $e->getMessage());
@@ -97,7 +97,7 @@ class GlideController extends Controller
             $routePrefix = '/' . ltrim(config('model-media-glide.route_prefix', 'media'), '/');
             $fullPath = $routePrefix . '/' . ltrim($path, '/');
 
-            app(Signature::class)->validateRequest($fullPath, request()->all());
+            app(Signature::class)->validateRequest($fullPath, request()->query());
         } catch (SignatureException) {
             abort(403, 'Invalid or missing signature. This URL requires a valid signature.');
         }

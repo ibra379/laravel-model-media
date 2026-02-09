@@ -22,10 +22,8 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
             ->hasConfigFile();
     }
 
-    public function register(): void
+    public function packageRegistered(): void
     {
-        parent::register();
-
         // Register Glide Plugin configuration and services directly here
         // to avoid issues with php artisan optimize (nested providers)
         $this->mergeConfigFrom(
@@ -36,9 +34,9 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
         if (class_exists(ServerFactory::class)) {
             // Register Glide Signature singleton
             $this->app->singleton(Signature::class, function ($app) {
-                $signatureKey = config('model-media-glide.signature_key');
+                $config = config('model-media-glide');
 
-                return new Signature($signatureKey ?? '');
+                return new Signature($config['signature_key'] ?? '');
             });
 
             // Register plugin instance as singleton
@@ -54,6 +52,7 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
     {
         // Bootstrap Glide plugin (load routes)
         if (class_exists(ServerFactory::class)) {
+            /** @var GlidePlugin $plugin */
             $plugin = $this->app->make(GlidePlugin::class);
             $plugin->boot();
 

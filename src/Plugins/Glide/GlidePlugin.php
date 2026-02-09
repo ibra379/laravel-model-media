@@ -31,8 +31,6 @@ class GlidePlugin implements MediaPlugin
     /**
      * Register Glide server instance in the container
      *
-     * Glide server processes images on-the-fly based on URL parameters
-     *
      * @return void
      */
     public function register(): void
@@ -41,30 +39,36 @@ class GlidePlugin implements MediaPlugin
             return;
         }
 
-        // Register Glide server as singleton
-        App::singleton('media.glide', function ($app) {
-            $config = config('model-media-glide', []);
+        $app = app();
 
-            return ServerFactory::create([
-                'response' => new GlideResponseFactory(), // Custom response factory for Laravel
-                'source' => $config['source'] ?? storage_path('app/public'),
-                'cache' => $config['cache'] ?? storage_path('app/glide-cache'),
-                'max_image_size' => $config['max_image_size'] ?? 2000 * 2000,
-                'presets' => $config['presets'] ?? [],
-                'driver' => $config['driver'] ?? 'gd',
-                'watermarks' => $config['watermarks'] ?? storage_path('app/watermarks'),
-            ]);
-        });
+        // Register Glide server as singleton
+        if (!$app->bound('media.glide')) {
+            $app->singleton('media.glide', function ($app) {
+                $config = config('model-media-glide', []);
+
+                return ServerFactory::create([
+                    'response' => new GlideResponseFactory(),
+                    'source' => $config['source'] ?? storage_path('app/public'),
+                    'cache' => $config['cache'] ?? storage_path('app/glide-cache'),
+                    'max_image_size' => $config['max_image_size'] ?? 2000 * 2000,
+                    'presets' => $config['presets'] ?? [],
+                    'driver' => $config['driver'] ?? 'gd',
+                    'watermarks' => $config['watermarks'] ?? storage_path('app/watermarks'),
+                ]);
+            });
+        }
 
         // Register UrlBuilder as singleton for URL generation
-        App::singleton('media.glide.url', function ($app) {
-            $baseUrl = '/' . ltrim(config('model-media-glide.route_prefix', 'media'), '/');
-            $signKey = config('model-media-glide.secure', false)
-                ? config('model-media-glide.signature_key')
-                : null;
+        if (!$app->bound('media.glide.url')) {
+            $app->singleton('media.glide.url', function ($app) {
+                $baseUrl = '/' . ltrim(config('model-media-glide.route_prefix', 'media'), '/');
+                $signKey = config('model-media-glide.secure', false)
+                    ? config('model-media-glide.signature_key')
+                    : null;
 
-            return UrlBuilderFactory::create($baseUrl, $signKey);
-        });
+                return UrlBuilderFactory::create($baseUrl, $signKey);
+            });
+        }
     }
 
     /**

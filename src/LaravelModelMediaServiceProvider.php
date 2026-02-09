@@ -2,6 +2,7 @@
 
 namespace DialloIbrahima\HasMedia;
 
+use DialloIbrahima\HasMedia\Plugins\Glide\GlideServiceProvider;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -17,5 +18,13 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
         $package
             ->name('laravel-model-media')
             ->hasConfigFile();
+    }
+
+    public function register(): void
+    {
+        parent::register();
+
+        // Register Glide plugin service provider
+        $this->app->register(GlideServiceProvider::class);
     }
 }

@@ -406,16 +406,28 @@ class User extends Model
 }
 ```
 
-Publish the Glide configuration (optional):
+Publish the Glide configuration:
 
 ```bash
 php artisan vendor:publish --tag=model-media-glide-config
 ```
 
+### ⚙️ Configuration
+
+You can publish the configuration files to customize the package behavior:
+
+```bash
+# Publish all configurations
+php artisan vendor:publish --provider="DialloIbrahima\HasMedia\LaravelModelMediaServiceProvider"
+
+# Or use specific tags
+php artisan vendor:publish --tag=laravel-model-media-config
+php artisan vendor:publish --tag=model-media-glide-config
+```
+
 > [!NOTE]
-> There are two configuration tags available:
-> - `laravel-model-media-config`: For general package settings.
-> - `model-media-glide-config`: Specifically for Glide (presets, security, etc.).
+> - `laravel-model-media-config`: General settings (currently minimal).
+> - `model-media-glide-config`: Glide-specific settings (presets, security, directories).
 
 ### Glide Basic Usage
 

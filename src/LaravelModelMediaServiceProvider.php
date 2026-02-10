@@ -2,11 +2,12 @@
 
 namespace DialloIbrahima\HasMedia;
 
+use DialloIbrahima\HasMedia\Plugins\Glide\GlideHelper;
+use DialloIbrahima\HasMedia\Plugins\Glide\GlideResponseFactory;
+use Illuminate\Support\Facades\Route;
 use League\Glide\ServerFactory;
 use League\Glide\Signatures\Signature;
 use League\Glide\Urls\UrlBuilderFactory;
-use DialloIbrahima\HasMedia\Plugins\Glide\GlideResponseFactory;
-use Illuminate\Support\Facades\Route;
 use Spatie\LaravelPackageTools\Package;
 use Spatie\LaravelPackageTools\PackageServiceProvider;
 
@@ -31,6 +32,7 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
             // Register Glide Signature singleton
             $this->app->singleton(Signature::class, function ($app) {
                 $config = config('model-media-glide');
+
                 return new Signature($config['signature_key'] ?? '');
             });
 
@@ -39,7 +41,7 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
                 $config = config('model-media-glide', []);
 
                 return ServerFactory::create([
-                    'response' => new GlideResponseFactory(),
+                    'response' => new GlideResponseFactory,
                     'source' => $config['source'] ?? storage_path('app/public'),
                     'cache' => $config['cache'] ?? storage_path('app/glide-cache'),
                     'max_image_size' => $config['max_image_size'] ?? 2000 * 2000,
@@ -51,12 +53,17 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
 
             // Register UrlBuilder as singleton ('media.glide.url')
             $this->app->singleton('media.glide.url', function ($app) {
-                $baseUrl = '/' . ltrim(config('model-media-glide.route_prefix', 'media'), '/');
+                $baseUrl = '/'.ltrim(config('model-media-glide.route_prefix', 'media'), '/');
                 $signKey = config('model-media-glide.secure', false)
                     ? config('model-media-glide.signature_key')
                     : null;
 
                 return UrlBuilderFactory::create($baseUrl, $signKey);
+            });
+
+            // Register Glide Helper as singleton ('media.glide.helper')
+            $this->app->singleton('media.glide.helper', function ($app) {
+                return new GlideHelper;
             });
         }
     }
@@ -65,12 +72,12 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
     {
         if ($this->app->runningInConsole()) {
             $this->publishes([
-                __DIR__ . '/../config/laravel-model-media.php' => config_path('laravel-model-media.php'),
+                __DIR__.'/../config/laravel-model-media.php' => config_path('laravel-model-media.php'),
             ], 'laravel-model-media-config');
 
             if (class_exists(ServerFactory::class)) {
                 $this->publishes([
-                    __DIR__ . '/../config/model-media-glide.php' => config_path('model-media-glide.php'),
+                    __DIR__.'/../config/model-media-glide.php' => config_path('model-media-glide.php'),
                 ], 'model-media-glide-config');
             }
         }
@@ -83,7 +90,7 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
 
     protected function registerGlideRoutes(): void
     {
-        if (!config('model-media-glide.routes_enabled', true)) {
+        if (! config('model-media-glide.routes_enabled', true)) {
             return;
         }
 
@@ -91,7 +98,7 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
             ->prefix(config('model-media-glide.route_prefix', 'media'))
             ->as('media.')
             ->group(function () {
-                require __DIR__ . '/Plugins/Glide/routes/glide.php';
+                require __DIR__.'/Plugins/Glide/routes/glide.php';
             });
     }
 }

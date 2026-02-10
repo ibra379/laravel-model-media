@@ -429,7 +429,32 @@ php artisan vendor:publish --tag=model-media-glide-config
 > - `laravel-model-media-config`: General settings (currently minimal).
 > - `model-media-glide-config`: Glide-specific settings (presets, security, directories).
 
-### Glide Basic Usage
+### Standalone usage (Facade)
+
+You can generate Glide URLs anywhere (controllers, services, blade) using the `Glide` facade, even without an Eloquent model.
+
+```php
+use DialloIbrahima\HasMedia\Plugins\Glide\Facades\Glide;
+
+// Generate a signed URL for a specific path
+$url = Glide::url('avatars/user-1.jpg', ['w' => 200, 'fit' => 'crop']);
+
+// Use a preset
+$url = Glide::preset('posts/cover.png', 'medium');
+
+// Generate a responsive srcset
+$srcset = Glide::srcset('products/hero.webp', [400, 800, 1200]);
+
+// Clear cache for a specific file
+Glide::deleteCache('avatars/user-1.jpg');
+```
+
+> [!NOTE]
+> The `Glide::url()` method automatically validates that the file exists and is a valid image before generating the URL. If validation fails, it returns `null`.
+
+### Glide Basic Usage (Model)
+
+Once configured, the `HasGlideUrls` trait provides convenient methods to generate URLs directly from your models:
 
 ```php
 // Resize to 200x200
@@ -438,8 +463,11 @@ $url = $user->getGlideUrl('avatar', ['w' => 200, 'h' => 200]);
 // Crop to fit
 $url = $user->getGlideUrl('avatar', ['w' => 300, 'h' => 300, 'fit' => 'crop']);
 
-// Convert to WebP with quality
-$url = $user->getGlideUrl('avatar', ['fm' => 'webp', 'q' => 85]);
+// Use a preset defined in config
+$url = $user->getGlidePresetUrl('avatar', 'thumbnail');
+
+// Get a responsive srcset
+$srcset = $user->getGlideSrcset('avatar');
 ```
 
 ### Transformation Parameters
@@ -597,7 +625,15 @@ This prevents stale cached images from being served and saves disk space.
 
 **Manual Cache Clearing**
 
-If you need to manually clear the cache for all images:
+If you need to manually clear the cache for a specific image:
+
+```php
+use DialloIbrahima\HasMedia\Plugins\Glide\Facades\Glide;
+
+Glide::deleteCache('avatars/user-1.jpg');
+```
+
+To clear the entire Glide cache:
 
 ```bash
 # Clear entire Glide cache

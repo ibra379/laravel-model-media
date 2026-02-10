@@ -76,7 +76,10 @@
         "laravel": {
             "providers": [
                 "DialloIbrahima\\HasMedia\\LaravelModelMediaServiceProvider"
-            ]
+            ],
+            "aliases": {
+                "Glide": "DialloIbrahima\\HasMedia\\Plugins\\Glide\\Facades\\Glide"
+            }
         }
     },
     "minimum-stability": "stable",

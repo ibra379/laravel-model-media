@@ -2,6 +2,15 @@
 
 All notable changes to `laravel-model-media` will be documented in this file.
 
+## v2.1.0 - 2026-02-11
+
+- **Added**: Standalone `Glide` facade and `GlideHelper` service for image manipulation anywhere in the application.
+- **Added**: Centralized `Glide::deleteCache($path)` method for manual and automatic cache cleanup.
+- **Improved**: `Glide::url()` now automatically validates file existence and image MIME types.
+- **Refactored**: Moved all Glide processing logic from models and observers into `GlideHelper` for better maintainability.
+- **Improved**: Codebase optimization using PHP 8.3 features (typed array constants for MIME types).
+- **Updated**: Comprehensive README update for standalone facade usage and cache management.
+
 ## v2.0.6 - 2026-02-10
 
 - **Improved**: Complete documentation refactor with premium look and clearer configuration instructions.

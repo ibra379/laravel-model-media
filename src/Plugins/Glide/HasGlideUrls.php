@@ -6,11 +6,8 @@ use DialloIbrahima\HasMedia\Exceptions\InvalidMediaTypeException;
 use DialloIbrahima\HasMedia\HasMedia;
 use DialloIbrahima\HasMedia\MediaMapping;
 use DialloIbrahima\HasMedia\Plugins\Glide\Observers\GlideCacheObserver;
-use Exception;
 use Illuminate\Support\Facades\Storage;
 use League\Glide\ServerFactory;
-use League\Glide\Signatures\Signature;
-use League\Glide\Urls\UrlBuilder;
 
 trait HasGlideUrls
 {
@@ -19,8 +16,6 @@ trait HasGlideUrls
      *
      * Registers the GlideCacheObserver to automatically clean up
      * cached images when the model is updated or deleted.
-     *
-     * @return void
      */
     public static function bootHasGlideUrls(): void
     {
@@ -30,35 +25,21 @@ trait HasGlideUrls
     }
 
     /**
-     * Allowed image MIME types for Glide processing
+     * Get Glide URL for a media column with custom transformation parameters
      *
-     * @var array
-     */
-    protected array $glideAllowedMimeTypes = [
-        'image/jpeg',
-        'image/jpg',
-        'image/png',
-        'image/gif',
-        'image/webp',
-        'image/bmp',
-        'image/svg+xml',
-    ];
-
-    /**
-     * Get Glide URL for media column with custom transformation parameters
-     *
-     * Generates URL for transformed image based on the column's MediaMapping
+     * Generates URL for a transformed image based on the column's MediaMapping
      *
      * IMPORTANT: Only works with image files
      * - Validates MIME type before generating URL
      * - Throws InvalidMediaTypeException for non-image files
-     * - Returns null if file doesn't exist or Glide is not available
+     * - Returns null if a file doesn't exist or Glide is not available
      *
-     * @param string $column Column name (e.g., 'avatar', 'cover')
-     * @param array $params Glide transformation parameters
-     * @param bool $throwOnError If true, throws exception on error; if false, returns null
+     * @param  string  $column  Column name (e.g., 'avatar', 'cover')
+     * @param  array  $params  Glide transformation parameters
+     * @param  bool  $throwOnError  If true, throws exception on error; if false, returns null
      * @return string|null URL to transformed image or null if not available
-     * @throws InvalidMediaTypeException If file is not an image (when $throwOnError = true)
+     *
+     * @throws InvalidMediaTypeException If a file is not an image (when $throwOnError = true)
      *
      * @example
      * // Basic resize
@@ -72,49 +53,13 @@ trait HasGlideUrls
      */
     public function getGlideUrl(string $column, array $params = [], bool $throwOnError = false): ?string
     {
-        if (!app()->bound('media.glide')) {
+        $mediaPath = $this->resolveAndValidateImageMedia($column, $throwOnError);
+
+        if (! $mediaPath) {
             return null;
         }
 
-        if (!$this->hasMediaTrait()) {
-            return null;
-        }
-
-        // Resolve media path information
-        $mediaPath = $this->resolveMediaPath($column);
-
-        if (!$mediaPath) {
-            if ($throwOnError) {
-                throw InvalidMediaTypeException::fileNotFound($column);
-            }
-            return null;
-        }
-
-        $absolutePath = $mediaPath['absolutePath'];
-        $fullPath = $mediaPath['fullPath'];
-
-        if (!$this->isImageFile($absolutePath)) {
-            $mimeType = mime_content_type($absolutePath);
-
-            if ($throwOnError) {
-                throw InvalidMediaTypeException::notAnImage($column, $mimeType);
-            }
-            return null;
-        }
-
-        // Additional validation: check if the image is readable
-        if (!$this->isValidImage($absolutePath)) {
-            if ($throwOnError) {
-                throw InvalidMediaTypeException::corruptedImage($column, $fullPath);
-            }
-            return null;
-        }
-
-        // Build path for Glide (relative to source directory)
-        $path = $fullPath;
-
-        // Use UrlBuilder to generate URL (handles signing automatically)
-        return $this->buildGlideUrl($path, $params);
+        return $this->getGlideHelper()->url($mediaPath['fullPath'], $params, validate: false);
     }
 
     /**
@@ -123,11 +68,12 @@ trait HasGlideUrls
      * Presets are defined in config/model-media-glide.php
      * Only works with image files - validates MIME type
      *
-     * @param string $column Column name
-     * @param string $preset Preset name (e.g., 'thumbnail', 'medium', 'large')
-     * @param bool $throwOnError If true, throws exception on error
+     * @param  string  $column  Column name
+     * @param  string  $preset  Preset name (e.g., 'thumbnail', 'medium', 'large')
+     * @param  bool  $throwOnError  If true, throws exception on error
      * @return string|null URL to transformed image or null if preset not found
-     * @throws InvalidMediaTypeException If file is not an image (when $throwOnError = true)
+     *
+     * @throws InvalidMediaTypeException If a file is not an image (when $throwOnError = true)
      *
      * @example
      * // Use thumbnail preset (200x200 crop)
@@ -138,9 +84,19 @@ trait HasGlideUrls
      */
     public function getGlidePresetUrl(string $column, string $preset, bool $throwOnError = false): ?string
     {
+        if (! $this->hasMediaTrait()) {
+            return null;
+        }
+
         $presets = config('model-media-glide.presets', []);
 
-        if (!isset($presets[$preset])) {
+        if (! isset($presets[$preset])) {
+            return null;
+        }
+
+        $mediaPath = $this->resolveMediaPath($column);
+
+        if (! $mediaPath) {
             return null;
         }
 
@@ -153,11 +109,12 @@ trait HasGlideUrls
      * Generates multiple image URLs at different widths for responsive images
      * Only works with image files - validates MIME type
      *
-     * @param string $column Column name
-     * @param array $widths Array of image widths to generate
-     * @param bool $throwOnError If true, throws exception on error
+     * @param  string  $column  Column name
+     * @param  array  $widths  Array of image widths to generate
+     * @param  bool  $throwOnError  If true, throws exception on error
      * @return string|null Srcset attribute value or null if unavailable
-     * @throws InvalidMediaTypeException If file is not an image (when $throwOnError = true)
+     *
+     * @throws InvalidMediaTypeException If a file is not an image (when $throwOnError = true)
      *
      * @example
      * // Default widths
@@ -168,49 +125,44 @@ trait HasGlideUrls
      */
     public function getGlideSrcset(string $column, array $widths = [400, 800, 1200, 1600], bool $throwOnError = false): ?string
     {
-        if (!app()->bound('media.glide')) {
+        $mediaPath = $this->resolveAndValidateImageMedia($column, $throwOnError);
+
+        if (! $mediaPath) {
             return null;
         }
 
-        $srcset = [];
-
-        foreach ($widths as $width) {
-            $url = $this->getGlideUrl($column, ['w' => $width, 'fm' => 'webp'], $throwOnError);
-
-            if ($url) {
-                $srcset[] = "{$url} {$width}w";
-            }
-        }
-
-        return !empty($srcset) ? implode(', ', $srcset) : null;
+        return $this->getGlideHelper()->srcset($mediaPath['fullPath'], $widths, validate: false);
     }
 
     /**
-     * Check if column contains an image file
+     * Check if a column contains an image file
      *
      * Useful for conditional rendering in Blade templates
      *
-     * @param string $column Column name
-     * @return bool True if column contains a valid image file
+     * @param  string  $column  Column name
+     * @return bool True if the column contains a valid image file
      *
      * @example
+     *
      * @if($user->hasImageMedia('avatar'))
      *     <img src="{{ $user->getGlideUrl('avatar', ['w' => 200]) }}">
+     *
      * @else
      *     <img src="{{ asset('images/default-avatar.jpg') }}">
+     *
      * @endif
      */
     public function hasImageMedia(string $column): bool
     {
         // Check if HasMedia trait is used
-        if (!$this->hasMediaTrait()) {
+        if (! $this->hasMediaTrait()) {
             return false;
         }
 
         // Resolve media path information
         $mediaPath = $this->resolveMediaPath($column);
 
-        if (!$mediaPath) {
+        if (! $mediaPath) {
             return false;
         }
 
@@ -219,82 +171,101 @@ trait HasGlideUrls
     }
 
     /**
-     * Check if file is an image based on MIME type
+     * Check if a file is an image based on a MIME type
      *
-     * @param string $path Absolute file path
-     * @return bool True if file is an allowed image type
+     * @param  string  $path  Absolute file path
+     * @return bool True if the file is an allowed image type
      */
     protected function isImageFile(string $path): bool
     {
-        if (!file_exists($path)) {
-            return false;
-        }
-
-        $mimeType = mime_content_type($path);
-
-        return in_array($mimeType, $this->glideAllowedMimeTypes);
+        return $this->getGlideHelper()->isImage($path);
     }
 
     /**
      * Validate image can be processed
      *
-     * Uses getimagesize() to verify file is a valid, readable image
+     * Uses getimagesize() to verify a file is a valid, readable image
      *
-     * @param string $path Absolute file path
-     * @return bool True if image is valid and readable
+     * @param  string  $path  Absolute file path
+     * @return bool True if the image is valid and readable
      */
     protected function isValidImage(string $path): bool
     {
-        try {
-            $imageInfo = @getimagesize($path);
-            return $imageInfo !== false;
-        } catch (Exception $e) {
-            return false;
-        }
+        return $this->getGlideHelper()->isValid($path);
     }
 
     /**
-     * Build Glide URL using UrlBuilder
+     * Build Glide URL using GlideHelper
      *
-     * Uses the UrlBuilder singleton which handles both signed and unsigned URLs
-     * based on the configuration. The UrlBuilder is registered in GlidePlugin.
-     *
-     * @param string $path Relative image path
-     * @param array $params Transformation parameters
+     * @param  string  $path  Relative image path
+     * @param  array  $params  Transformation parameters
      * @return string|null Complete URL or null on error
      */
     protected function buildGlideUrl(string $path, array $params = []): ?string
     {
-        // Try to use the registered UrlBuilder
-        if (app()->bound('media.glide.url')) {
-            try {
-                /** @var UrlBuilder $urlBuilder */
-                $urlBuilder = app('media.glide.url');
+        return $this->getGlideHelper()->url($path, $params);
+    }
 
-                return url($urlBuilder->getUrl($path, $params));
-            } catch (Exception $e) {
-                logger()->debug('Failed to build Glide URL with UrlBuilder', [
-                    'path' => $path,
-                    'error' => $e->getMessage(),
-                ]);
+    /**
+     * Resolve and validate the media path for a column
+     *
+     * @param  string  $column  Column name
+     * @param  bool  $throwOnError  If true, throws exception on error
+     * @return array{mapping: MediaMapping, fullPath: string, disk: string, absolutePath: string}|null
+     *
+     * @throws InvalidMediaTypeException
+     */
+    protected function resolveAndValidateImageMedia(string $column, bool $throwOnError = false): ?array
+    {
+        if (! $this->hasMediaTrait()) {
+            return null;
+        }
+
+        $mediaPath = $this->resolveMediaPath($column);
+
+        if (! $mediaPath) {
+            if ($throwOnError) {
+                throw InvalidMediaTypeException::fileNotFound($column);
             }
+
+            return null;
         }
 
-        // Fallback: build URL manually without signing
-        $baseUrl = config('model-media-glide.route_prefix', 'media');
-        $url = url($baseUrl . '/' . $path);
+        $absolutePath = $mediaPath['absolutePath'];
+        $fullPath = $mediaPath['fullPath'];
+        $helper = $this->getGlideHelper();
 
-        if (!empty($params)) {
-            $url .= '?' . http_build_query($params);
+        if (! $helper->isImage($absolutePath)) {
+            $mimeType = mime_content_type($absolutePath);
+
+            if ($throwOnError) {
+                throw InvalidMediaTypeException::notAnImage($column, $mimeType);
+            }
+
+            return null;
         }
 
-        return $url;
+        if (! $helper->isValid($absolutePath)) {
+            if ($throwOnError) {
+                throw InvalidMediaTypeException::corruptedImage($column, $fullPath);
+            }
+
+            return null;
+        }
+
+        return $mediaPath;
+    }
+
+    /**
+     * Get the GlideHelper instance
+     */
+    protected function getGlideHelper(): GlideHelper
+    {
+        return app('media.glide.helper');
     }
 
     /**
      * Check if HasMedia trait is used
-     *
-     * @return bool
      */
     private function hasMediaTrait(): bool
     {
@@ -303,10 +274,9 @@ trait HasGlideUrls
     }
 
     /**
-     * Get filename from column
+     * Get filename from a column
      *
-     * @param string $column Column name
-     * @return string|null
+     * @param  string  $column  Column name
      */
     private function getColumnFileName(string $column): ?string
     {
@@ -318,34 +288,34 @@ trait HasGlideUrls
     /**
      * Resolve media path information for a column
      *
-     * @param string $column Column name
+     * @param  string  $column  Column name
      * @return array{mapping: MediaMapping, fullPath: string, disk: string, absolutePath: string}|null
      */
     private function resolveMediaPath(string $column): ?array
     {
         $fileName = $this->getColumnFileName($column);
 
-        if (!$fileName) {
+        if (! $fileName) {
             return null;
         }
 
         // Get mapping from HasMedia trait
-        if (!method_exists($this, 'getMediaMappings')) {
+        if (! method_exists($this, 'getMediaMappings')) {
             return null;
         }
 
         $mappings = $this->getMediaMappings();
         $mapping = $mappings[$column] ?? null;
 
-        if (!$mapping) {
+        if (! $mapping) {
             return null;
         }
 
         $directory = $mapping->getDirectory();
         $disk = $mapping->getDisk();
-        $fullPath = $directory . '/' . $fileName;
+        $fullPath = $directory.'/'.$fileName;
 
-        if (!Storage::disk($disk)->exists($fullPath)) {
+        if (! Storage::disk($disk)->exists($fullPath)) {
             return null;
         }
 
@@ -358,10 +328,9 @@ trait HasGlideUrls
     }
 
     /**
-     * Validate that file at path is a valid image
+     * Validate that a file at a path is a valid image
      *
-     * @param string $absolutePath Absolute file path
-     * @return bool
+     * @param  string  $absolutePath  Absolute file path
      */
     private function validateImageFile(string $absolutePath): bool
     {

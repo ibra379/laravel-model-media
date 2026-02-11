@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 
 trait HasMedia
 {
-    /** @var MediaMapping[] */
+    /** @var array<string, MediaMapping> */
     private static array $mediaMappings = [];
 
     public static function bootHasMedia(): void
@@ -93,6 +93,11 @@ trait HasMedia
         return Storage::disk($mapping->getDisk())->url(sprintf('%s/%s', $directory, $fileName));
     }
 
+    /**
+     * Get all media mappings.
+     *
+     * @return array<string, MediaMapping>
+     */
     public function getMediaMappings(): array
     {
         return self::$mediaMappings;

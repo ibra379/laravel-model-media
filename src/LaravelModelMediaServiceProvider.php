@@ -71,7 +71,7 @@ class LaravelModelMediaServiceProvider extends PackageServiceProvider
             $config = config('model-media-glide', []);
 
             return ServerFactory::create([
-                'response' => new GlideResponseFactory(request()),
+                'response' => new GlideResponseFactory,
                 'source' => $this->resolveFilesystem($config['source_disk'] ?? 'public'),
                 'source_path_prefix' => $config['source_path_prefix'] ?? '',
                 'cache' => $this->resolveFilesystem($config['cache_disk'] ?? 'local'),

@@ -40,11 +40,12 @@ final class GlideResponseFactory implements ResponseFactoryInterface
             $response->setLastModified($lastModified);
             $response->setEtag(md5($path.$lastModified->getTimestamp()));
 
-            // Let Symfony handle 304 — isNotModified() sets the status internally.
-            // The callback won't be executed when the response is 304.
-            $currentRequest = $this->request ?? (function_exists('request') ? request() : null);
-            if ($currentRequest) {
-                $response->isNotModified($currentRequest);
+            // Use the current request (not the one from boot time)
+            $currentRequest = $this->request ?? request();
+
+            // Return 304 Not Modified without reading the stream
+            if ($currentRequest && $response->isNotModified($currentRequest)) {
+                return $response;
             }
 
             // Lazy stream: opened only when Symfony actually sends the body (not on 304)

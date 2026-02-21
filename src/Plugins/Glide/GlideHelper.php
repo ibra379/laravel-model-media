@@ -4,6 +4,7 @@ namespace DialloIbrahima\HasMedia\Plugins\Glide;
 
 use Exception;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use League\Glide\Urls\UrlBuilderFactory;
 
 class GlideHelper
@@ -15,7 +16,6 @@ class GlideHelper
      */
     public const array ALLOWED_MIME_TYPES = [
         'image/jpeg',
-        'image/jpg',
         'image/png',
         'image/gif',
         'image/webp',
@@ -26,9 +26,9 @@ class GlideHelper
     /**
      * Generate a Glide URL for a given path
      *
-     * @param string $path Relative path to the image
-     * @param array<string, int|string> $params Transformation parameters
-     * @param bool $validate Whether to validate that the file is an image
+     * @param  string  $path  Relative path to the image
+     * @param  array<string, int|string>  $params  Transformation parameters
+     * @param  bool  $validate  Whether to validate that the file is an image
      */
     public function url(string $path, array $params = [], bool $validate = true): ?string
     {
@@ -37,10 +37,9 @@ class GlideHelper
         }
 
         if ($validate) {
-            $sourceDir = config('model-media-glide.source', storage_path('app/public'));
-            $absolutePath = $sourceDir . DIRECTORY_SEPARATOR . ltrim($path, DIRECTORY_SEPARATOR);
+            $absolutePath = $this->resolveSourcePath($path);
 
-            if (!$this->isImage($absolutePath) || !$this->isValid($absolutePath)) {
+            if (! $this->isImage($absolutePath) || ! $this->isValid($absolutePath)) {
                 return null;
             }
         }
@@ -58,15 +57,15 @@ class GlideHelper
     /**
      * Generate a Glide URL using a preset
      *
-     * @param string $path Relative path to the image
-     * @param string $preset Preset name from config
+     * @param  string  $path  Relative path to the image
+     * @param  string  $preset  Preset name from config
      */
     public function preset(string $path, string $preset): ?string
     {
         $presets = config('model-media-glide.presets', []);
 
-        if (!isset($presets[$preset])) {
-            return $this->url($path);
+        if (! isset($presets[$preset])) {
+            return null;
         }
 
         return $this->url($path, $presets[$preset]);
@@ -75,9 +74,9 @@ class GlideHelper
     /**
      * Generate an image srcset attribute
      *
-     * @param string $path Relative path to the image
-     * @param array $widths Array of image widths
-     * @param bool $validate Whether to validate that the file is an image
+     * @param  string  $path  Relative path to the image
+     * @param  array  $widths  Array of image widths
+     * @param  bool  $validate  Whether to validate that the file is an image
      */
     public function srcset(string $path, array $widths = [400, 800, 1200, 1600], bool $validate = true): ?string
     {
@@ -91,7 +90,7 @@ class GlideHelper
             }
         }
 
-        return !empty($srcset) ? implode(', ', $srcset) : null;
+        return ! empty($srcset) ? implode(', ', $srcset) : null;
     }
 
     /**
@@ -99,7 +98,7 @@ class GlideHelper
      */
     public function isImage(string $absolutePath): bool
     {
-        if (!file_exists($absolutePath)) {
+        if (! file_exists($absolutePath)) {
             return false;
         }
 
@@ -113,8 +112,14 @@ class GlideHelper
      */
     public function isValid(string $absolutePath): bool
     {
-        if (!$this->isImage($absolutePath)) {
+        if (! $this->isImage($absolutePath)) {
             return false;
+        }
+
+        // SVG files cannot be validated with getimagesize()
+        $mimeType = @mime_content_type($absolutePath);
+        if ($mimeType === 'image/svg+xml') {
+            return true;
         }
 
         try {
@@ -129,20 +134,23 @@ class GlideHelper
     /**
      * Clear Glide cache for a specific file path.
      *
-     * @param string $path Relative path to the source file
+     * @param  string  $path  Relative path to the source file
      */
     public function deleteCache(string $path): void
     {
-        $cacheDir = config('model-media-glide.cache', storage_path('app/glide-cache'));
+        $cacheDisk = config('model-media-glide.cache_disk', 'local');
+        $cachePath = config('model-media-glide.cache_path', 'glide-cache');
+        $cacheDir = Storage::disk($cacheDisk)->path($cachePath);
+
         $normalizedPath = ltrim($path, DIRECTORY_SEPARATOR);
 
         // 1. Manual cleanup (find and delete all cached versions)
-        $cachePath = $cacheDir . DIRECTORY_SEPARATOR . $normalizedPath;
-        $cacheFileDir = dirname($cachePath);
+        $fullCachePath = $cacheDir.DIRECTORY_SEPARATOR.$normalizedPath;
+        $cacheFileDir = dirname($fullCachePath);
 
         if (File::isDirectory($cacheFileDir)) {
             $baseName = pathinfo($path, PATHINFO_FILENAME);
-            $files = File::glob($cacheFileDir . DIRECTORY_SEPARATOR . $baseName . '*');
+            $files = File::glob($cacheFileDir.DIRECTORY_SEPARATOR.$baseName.'*');
 
             foreach ($files as $file) {
                 if (File::isFile($file)) {
@@ -160,5 +168,18 @@ class GlideHelper
                 // Silently fail - cache cleanup is not critical
             }
         }
+    }
+
+    /**
+     * Resolve the absolute source path for a relative image path.
+     */
+    protected function resolveSourcePath(string $path): string
+    {
+        $disk = config('model-media-glide.source_disk', 'public');
+        $prefix = config('model-media-glide.source_path_prefix', '');
+
+        $relativePath = $prefix ? $prefix.'/'.$path : $path;
+
+        return Storage::disk($disk)->path($relativePath);
     }
 }

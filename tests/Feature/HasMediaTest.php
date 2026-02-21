@@ -11,7 +11,8 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    Storage::disk('public')->deleteDirectory('documents');
+    Storage::disk('public')->deleteDirectory('avatars');
+    Storage::disk('public')->deleteDirectory('covers');
     Mockery::close();
     \Illuminate\Support\Str::createRandomStringsNormally();
 });
@@ -23,12 +24,12 @@ describe('HasMedia trait', function () {
 
         $model->attachMedia(
             UploadedFile::fake()->create('test.jpg', 100),
-            'name'
+            'avatar'
         );
 
-        expect($model->name)->toBe($model->slug.'.jpg')
+        expect($model->avatar)->toBe($model->slug.'.jpg')
             ->and(Storage::disk('public')
-                ->exists('documents/'.$model->name))->toBeTrue();
+                ->exists('avatars/'.$model->avatar))->toBeTrue();
     });
 
     it('deletes previous file when attaching new media to same property', function () {
@@ -37,21 +38,21 @@ describe('HasMedia trait', function () {
 
         $model->attachMedia(
             UploadedFile::fake()->create('test.jpg', 100),
-            'name'
+            'avatar'
         );
-        $firstFileName = $model->name;
+        $firstFileName = $model->avatar;
 
-        Storage::disk('public')->assertExists('documents/'.$firstFileName);
+        Storage::disk('public')->assertExists('avatars/'.$firstFileName);
 
         $model->update(['slug' => 'new-slug']);
 
         $model->attachMedia(
             UploadedFile::fake()->create('test.jpg', 100),
-            'name'
+            'avatar'
         );
-        Storage::disk('public')->assertMissing('documents/'.$firstFileName);
-        Storage::disk('public')->assertExists('documents/'.$model->name);
-        expect($model->name)->toBe($model->slug.'.jpg');
+        Storage::disk('public')->assertMissing('avatars/'.$firstFileName);
+        Storage::disk('public')->assertExists('avatars/'.$model->avatar);
+        expect($model->avatar)->toBe($model->slug.'.jpg');
     });
 
     it('preserves previous file when upload fails', function () {
@@ -60,11 +61,11 @@ describe('HasMedia trait', function () {
 
         $model->attachMedia(
             UploadedFile::fake()->create('test.jpg', 100),
-            'name'
+            'avatar'
         );
-        $firstFileName = $model->name;
+        $firstFileName = $model->avatar;
 
-        Storage::disk('public')->assertExists('documents/'.$firstFileName);
+        Storage::disk('public')->assertExists('avatars/'.$firstFileName);
 
         $model->fill(['slug' => $newSlug = 'new-slug']);
 
@@ -72,10 +73,10 @@ describe('HasMedia trait', function () {
         $mock = Mockery::mock($file)->makePartial();
         $mock->shouldReceive('storeAs')->andReturn(false);
         /** @var UploadedFile $mock */
-        $model->attachMedia($mock, 'name');
-        Storage::disk('public')->assertExists('documents/'.$firstFileName);
-        Storage::disk('public')->assertMissing('documents/'.$newSlug.'jpg');
-        expect($model->name)->toBe($firstFileName);
+        $model->attachMedia($mock, 'avatar');
+        Storage::disk('public')->assertExists('avatars/'.$firstFileName);
+        Storage::disk('public')->assertMissing('avatars/'.$newSlug.'.jpg');
+        expect($model->avatar)->toBe($firstFileName);
     });
 
     it('removes associated file when model is deleted', function () {
@@ -84,12 +85,12 @@ describe('HasMedia trait', function () {
 
         $model->attachMedia(
             UploadedFile::fake()->create('test.jpg', 100),
-            'name'
+            'avatar'
         );
 
-        Storage::disk('public')->assertExists('documents/'.$model->name);
+        Storage::disk('public')->assertExists('avatars/'.$model->avatar);
         $model->delete();
-        Storage::disk('public')->assertMissing('documents/'.$model->name);
+        Storage::disk('public')->assertMissing('avatars/'.$model->avatar);
     });
 
     it('supports callable filename generator', function () {
@@ -98,12 +99,12 @@ describe('HasMedia trait', function () {
 
         $model->attachMedia(
             UploadedFile::fake()->create('test.jpg', 100),
-            'name_with_id'
+            'cover_image'
         );
 
-        expect($model->name_with_id)->toBe($model->id.'-random.jpg')
+        expect($model->cover_image)->toBe($model->id.'-random.jpg')
             ->and(Storage::disk('public')
-                ->exists('documents/'.$model->name_with_id))->toBeTrue();
+                ->exists('covers/'.$model->cover_image))->toBeTrue();
     });
 
     it('returns correct URL for media file', function () {
@@ -112,13 +113,71 @@ describe('HasMedia trait', function () {
 
         $model->attachMedia(
             UploadedFile::fake()->create('test.jpg', 100),
-            'name_with_id'
+            'cover_image'
         );
 
-        expect($model->name_with_id)->toBe($model->id.'-random.jpg');
+        expect($model->cover_image)->toBe($model->id.'-random.jpg');
 
-        $url = $model->getMediaUrl('name_with_id');
-        expect($url)->toBe(Storage::disk('public')->url('documents/'.$model->name_with_id));
+        $url = $model->getMediaUrl('cover_image');
+        expect($url)->toBe(Storage::disk('public')->url('covers/'.$model->cover_image));
+    });
+
+    it('detaches media and deletes file from disk', function () {
+        /** @var MediaTest $model */
+        $model = MediaTest::factory()->create();
+
+        $model->attachMedia(
+            UploadedFile::fake()->create('test.jpg', 100),
+            'avatar'
+        );
+
+        $fileName = $model->avatar;
+        Storage::disk('public')->assertExists('avatars/'.$fileName);
+
+        $result = $model->detachMedia('avatar');
+
+        expect($result)->toBeTrue()
+            ->and($model->avatar)->toBeNull();
+        Storage::disk('public')->assertMissing('avatars/'.$fileName);
+    });
+
+    it('returns true when detaching null column', function () {
+        /** @var MediaTest $model */
+        $model = MediaTest::factory()->create();
+
+        expect($model->detachMedia(null))->toBeTrue();
+    });
+
+    it('returns true when detaching column with no file', function () {
+        /** @var MediaTest $model */
+        $model = MediaTest::factory()->create();
+
+        expect($model->detachMedia('avatar'))->toBeTrue();
+    });
+
+    it('returns null for getMediaUrl when column has no file', function () {
+        /** @var MediaTest $model */
+        $model = MediaTest::factory()->create();
+
+        expect($model->getMediaUrl('avatar'))->toBeNull();
+    });
+
+    it('returns media mappings for the model', function () {
+        $model = MediaTest::factory()->create();
+        $mappings = $model->getMediaMappings();
+
+        expect($mappings)->toBeArray()
+            ->toHaveKey('avatar')
+            ->toHaveKey('cover_image');
+    });
+
+    it('throws RuntimeException for unmapped column', function () {
+        $model = MediaTest::factory()->create();
+
+        expect(fn () => $model->attachMedia(
+            UploadedFile::fake()->create('test.jpg', 100),
+            'nonexistent_column'
+        ))->toThrow(\RuntimeException::class, 'No media mapping found for column: nonexistent_column');
     });
 
     it('preserves file when attaching media with identical filename', function () {
@@ -128,20 +187,20 @@ describe('HasMedia trait', function () {
         // Attach initial file
         $model->attachMedia(
             UploadedFile::fake()->create('test.jpg', 100),
-            'name'
+            'avatar'
         );
-        $fileName = $model->name;
+        $fileName = $model->avatar;
 
-        Storage::disk('public')->assertExists('documents/'.$fileName);
+        Storage::disk('public')->assertExists('avatars/'.$fileName);
 
         // Attach another file with same slug (will generate same filename)
         $model->attachMedia(
             UploadedFile::fake()->create('test.jpg', 100),
-            'name'
+            'avatar'
         );
 
         // File should still exist (not deleted because filenames are identical)
-        Storage::disk('public')->assertExists('documents/'.$fileName);
-        expect($model->name)->toBe($fileName);
+        Storage::disk('public')->assertExists('avatars/'.$fileName);
+        expect($model->avatar)->toBe($fileName);
     });
 });

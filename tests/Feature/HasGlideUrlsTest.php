@@ -14,7 +14,7 @@ beforeEach(function () {
     // Register fake Glide server
     app()->singleton('media.glide', function () {
         return ServerFactory::create([
-            'response' => new GlideResponseFactory(),
+            'response' => new GlideResponseFactory,
             'source' => Storage::disk('public')->path(''),
             'cache' => Storage::disk('public')->path('glide-cache'),
         ]);
@@ -26,6 +26,8 @@ beforeEach(function () {
     });
 
     // Set config
+    config()->set('model-media-glide.source_disk', 'public');
+    config()->set('model-media-glide.source_path_prefix', '');
     config()->set('model-media-glide.route_prefix', 'media');
     config()->set('model-media-glide.secure', false);
     config()->set('model-media-glide.presets', [
@@ -35,10 +37,9 @@ beforeEach(function () {
 });
 
 afterEach(function () {
-    Storage::disk('public')->deleteDirectory('images');
-    Storage::disk('public')->deleteDirectory('documents');
+    Storage::disk('public')->deleteDirectory('avatars');
+    Storage::disk('public')->deleteDirectory('covers');
     Storage::disk('public')->deleteDirectory('glide-cache');
-    Mockery::close();
 });
 
 describe('HasGlideUrls trait', function () {
@@ -51,18 +52,18 @@ describe('HasGlideUrls trait', function () {
             /** @var GlideMediaTest $model */
             $model = GlideMediaTest::factory()->create();
             // Set a filename directly without creating the actual file
-            $model->fill(['name' => 'test-image.jpg']);
+            $model->fill(['avatar' => 'test-image.jpg']);
             $model->save();
 
             // Even with a filename set, should return null because glide is not bound
-            expect($model->getGlideUrl('name'))->toBeNull();
+            expect($model->getGlideUrl('avatar'))->toBeNull();
         });
 
         it('returns null when column has no file', function () {
             /** @var GlideMediaTest $model */
             $model = GlideMediaTest::factory()->create();
 
-            expect($model->getGlideUrl('name'))->toBeNull();
+            expect($model->getGlideUrl('avatar'))->toBeNull();
         });
 
         it('returns url for valid image file', function () {
@@ -70,13 +71,13 @@ describe('HasGlideUrls trait', function () {
             $model = GlideMediaTest::factory()->create();
             $model->attachMedia(
                 UploadedFile::fake()->image('test.jpg', 100, 100),
-                'name'
+                'avatar'
             );
 
-            $url = $model->getGlideUrl('name', ['w' => 200, 'h' => 200]);
+            $url = $model->getGlideUrl('avatar', ['w' => 200, 'h' => 200]);
 
             expect($url)->not->toBeNull()
-                ->and($url)->toContain('media/images/')
+                ->and($url)->toContain('media/avatars/')
                 ->and($url)->toContain('w=200')
                 ->and($url)->toContain('h=200');
         });
@@ -86,10 +87,10 @@ describe('HasGlideUrls trait', function () {
             $model = GlideMediaTest::factory()->create();
             $model->attachMedia(
                 UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'),
-                'name_with_id'
+                'cover_image'
             );
 
-            $url = $model->getGlideUrl('name_with_id', ['w' => 200]);
+            $url = $model->getGlideUrl('cover_image', ['w' => 200]);
 
             expect($url)->toBeNull();
         });
@@ -99,10 +100,10 @@ describe('HasGlideUrls trait', function () {
             $model = GlideMediaTest::factory()->create();
             $model->attachMedia(
                 UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'),
-                'name_with_id'
+                'cover_image'
             );
 
-            expect(fn () => $model->getGlideUrl('name_with_id', ['w' => 200], throwOnError: true))
+            expect(fn () => $model->getGlideUrl('cover_image', ['w' => 200], throwOnError: true))
                 ->toThrow(InvalidMediaTypeException::class);
         });
 
@@ -110,10 +111,10 @@ describe('HasGlideUrls trait', function () {
             /** @var GlideMediaTest $model */
             $model = GlideMediaTest::factory()->create();
             // Manually set the column without creating a file
-            $model->fill(['name' => 'nonexistent.jpg']);
+            $model->fill(['avatar' => 'nonexistent.jpg']);
             $model->save();
 
-            expect(fn () => $model->getGlideUrl('name', ['w' => 200], throwOnError: true))
+            expect(fn () => $model->getGlideUrl('avatar', ['w' => 200], throwOnError: true))
                 ->toThrow(InvalidMediaTypeException::class);
         });
     });
@@ -124,10 +125,10 @@ describe('HasGlideUrls trait', function () {
             $model = GlideMediaTest::factory()->create();
             $model->attachMedia(
                 UploadedFile::fake()->image('test.jpg', 100, 100),
-                'name'
+                'avatar'
             );
 
-            expect($model->getGlidePresetUrl('name', 'unknown'))->toBeNull();
+            expect($model->getGlidePresetUrl('avatar', 'unknown'))->toBeNull();
         });
 
         it('returns url with preset parameters', function () {
@@ -135,15 +136,34 @@ describe('HasGlideUrls trait', function () {
             $model = GlideMediaTest::factory()->create();
             $model->attachMedia(
                 UploadedFile::fake()->image('test.jpg', 100, 100),
-                'name'
+                'avatar'
             );
 
-            $url = $model->getGlidePresetUrl('name', 'thumbnail');
+            $url = $model->getGlidePresetUrl('avatar', 'thumbnail');
 
             expect($url)->not->toBeNull()
                 ->and($url)->toContain('w=200')
                 ->and($url)->toContain('h=200')
                 ->and($url)->toContain('fit=crop');
+        });
+
+        it('returns null when column has no file', function () {
+            /** @var GlideMediaTest $model */
+            $model = GlideMediaTest::factory()->create();
+
+            expect($model->getGlidePresetUrl('avatar', 'thumbnail'))->toBeNull();
+        });
+
+        it('throws InvalidMediaTypeException for non-image file when throwOnError is true', function () {
+            /** @var GlideMediaTest $model */
+            $model = GlideMediaTest::factory()->create();
+            $model->attachMedia(
+                UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'),
+                'cover_image'
+            );
+
+            expect(fn () => $model->getGlidePresetUrl('cover_image', 'thumbnail', throwOnError: true))
+                ->toThrow(InvalidMediaTypeException::class);
         });
     });
 
@@ -155,11 +175,11 @@ describe('HasGlideUrls trait', function () {
             /** @var GlideMediaTest $model */
             $model = GlideMediaTest::factory()->create();
             // Set a filename directly without creating the actual file
-            $model->fill(['name' => 'test-image.jpg']);
+            $model->fill(['avatar' => 'test-image.jpg']);
             $model->save();
 
             // Even with a filename set, should return null because glide is not bound
-            expect($model->getGlideSrcset('name'))->toBeNull();
+            expect($model->getGlideSrcset('avatar'))->toBeNull();
         });
 
         it('returns srcset with default widths', function () {
@@ -167,10 +187,10 @@ describe('HasGlideUrls trait', function () {
             $model = GlideMediaTest::factory()->create();
             $model->attachMedia(
                 UploadedFile::fake()->image('test.jpg', 100, 100),
-                'name'
+                'avatar'
             );
 
-            $srcset = $model->getGlideSrcset('name');
+            $srcset = $model->getGlideSrcset('avatar');
 
             expect($srcset)->not->toBeNull()
                 ->and($srcset)->toContain('400w')
@@ -184,16 +204,39 @@ describe('HasGlideUrls trait', function () {
             $model = GlideMediaTest::factory()->create();
             $model->attachMedia(
                 UploadedFile::fake()->image('test.jpg', 100, 100),
-                'name'
+                'avatar'
             );
 
-            $srcset = $model->getGlideSrcset('name', [320, 640, 1024]);
+            $srcset = $model->getGlideSrcset('avatar', [320, 640, 1024]);
 
             expect($srcset)->not->toBeNull()
                 ->and($srcset)->toContain('320w')
                 ->and($srcset)->toContain('640w')
                 ->and($srcset)->toContain('1024w')
                 ->and($srcset)->not->toContain('400w');
+        });
+
+        it('returns null for non-image file', function () {
+            /** @var GlideMediaTest $model */
+            $model = GlideMediaTest::factory()->create();
+            $model->attachMedia(
+                UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'),
+                'cover_image'
+            );
+
+            expect($model->getGlideSrcset('cover_image'))->toBeNull();
+        });
+
+        it('throws InvalidMediaTypeException for non-image file when throwOnError is true', function () {
+            /** @var GlideMediaTest $model */
+            $model = GlideMediaTest::factory()->create();
+            $model->attachMedia(
+                UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'),
+                'cover_image'
+            );
+
+            expect(fn () => $model->getGlideSrcset('cover_image', throwOnError: true))
+                ->toThrow(InvalidMediaTypeException::class);
         });
     });
 
@@ -202,16 +245,16 @@ describe('HasGlideUrls trait', function () {
             /** @var GlideMediaTest $model */
             $model = GlideMediaTest::factory()->create();
 
-            expect($model->hasImageMedia('name'))->toBeFalse();
+            expect($model->hasImageMedia('avatar'))->toBeFalse();
         });
 
         it('returns false when file does not exist', function () {
             /** @var GlideMediaTest $model */
             $model = GlideMediaTest::factory()->create();
-            $model->fill(['name' => 'nonexistent.jpg']);
+            $model->fill(['avatar' => 'nonexistent.jpg']);
             $model->save();
 
-            expect($model->hasImageMedia('name'))->toBeFalse();
+            expect($model->hasImageMedia('avatar'))->toBeFalse();
         });
 
         it('returns true for valid image file', function () {
@@ -219,10 +262,10 @@ describe('HasGlideUrls trait', function () {
             $model = GlideMediaTest::factory()->create();
             $model->attachMedia(
                 UploadedFile::fake()->image('test.jpg', 100, 100),
-                'name'
+                'avatar'
             );
 
-            expect($model->hasImageMedia('name'))->toBeTrue();
+            expect($model->hasImageMedia('avatar'))->toBeTrue();
         });
 
         it('returns false for non-image file', function () {
@@ -230,10 +273,10 @@ describe('HasGlideUrls trait', function () {
             $model = GlideMediaTest::factory()->create();
             $model->attachMedia(
                 UploadedFile::fake()->create('document.pdf', 100, 'application/pdf'),
-                'name_with_id'
+                'cover_image'
             );
 
-            expect($model->hasImageMedia('name_with_id'))->toBeFalse();
+            expect($model->hasImageMedia('cover_image'))->toBeFalse();
         });
     });
 
@@ -243,34 +286,34 @@ describe('HasGlideUrls trait', function () {
             $model = GlideMediaTest::factory()->create();
             $model->attachMedia(
                 UploadedFile::fake()->image('test.jpg', 100, 100),
-                'name'
+                'avatar'
             );
 
             // Use reflection to test private method
             $reflection = new ReflectionClass($model);
             $method = $reflection->getMethod('resolveMediaPath');
 
-            $result = $method->invoke($model, 'name');
+            $result = $method->invoke($model, 'avatar');
 
             expect($result)->not->toBeNull()
                 ->and($result)->toHaveKey('mapping')
                 ->and($result)->toHaveKey('fullPath')
                 ->and($result)->toHaveKey('disk')
                 ->and($result)->toHaveKey('absolutePath')
-                ->and($result['fullPath'])->toContain('images/');
+                ->and($result['fullPath'])->toContain('avatars/');
         });
 
         it('resolveMediaPath returns null for missing file', function () {
             /** @var GlideMediaTest $model */
             $model = GlideMediaTest::factory()->create();
-            $model->fill(['name' => 'nonexistent.jpg']);
+            $model->fill(['avatar' => 'nonexistent.jpg']);
             $model->save();
 
             $reflection = new ReflectionClass($model);
             $method = $reflection->getMethod('resolveMediaPath');
             $method->setAccessible(true);
 
-            $result = $method->invoke($model, 'name');
+            $result = $method->invoke($model, 'avatar');
 
             expect($result)->toBeNull();
         });

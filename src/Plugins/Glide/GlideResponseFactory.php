@@ -40,8 +40,11 @@ final class GlideResponseFactory implements ResponseFactoryInterface
             $response->setLastModified($lastModified);
             $response->setEtag(md5($path . $lastModified->getTimestamp()));
 
+            // Use the current request (not the one from boot time)
+            $currentRequest = $this->request ?? request();
+
             // Return 304 Not Modified without reading the stream
-            if ($this->request && $response->isNotModified($this->request)) {
+            if ($currentRequest && $response->isNotModified($currentRequest)) {
                 return $response;
             }
 

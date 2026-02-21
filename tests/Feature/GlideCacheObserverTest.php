@@ -13,7 +13,7 @@ beforeEach(function () {
     $this->cacheDir = Storage::disk('public')->path('glide-cache');
 
     // Create cache directory
-    if (!File::isDirectory($this->cacheDir)) {
+    if (! File::isDirectory($this->cacheDir)) {
         File::makeDirectory($this->cacheDir, 0755, true);
     }
 
@@ -28,14 +28,14 @@ beforeEach(function () {
     // Set config
     config()->set('model-media-glide.route_prefix', 'media');
     config()->set('model-media-glide.secure', false);
-    config()->set('model-media-glide.cache', Storage::disk('public')->path('glide-cache'));
+    config()->set('model-media-glide.cache_disk', 'public');
+    config()->set('model-media-glide.cache_path', 'glide-cache');
 });
 
 afterEach(function () {
-    Storage::disk('public')->deleteDirectory('images');
-    Storage::disk('public')->deleteDirectory('documents');
+    Storage::disk('public')->deleteDirectory('avatars');
+    Storage::disk('public')->deleteDirectory('covers');
     Storage::disk('public')->deleteDirectory('glide-cache');
-    Mockery::close();
 });
 
 describe('GlideCacheObserver', function () {
@@ -48,21 +48,21 @@ describe('GlideCacheObserver', function () {
             // Attach initial image
             $model->attachMedia(
                 UploadedFile::fake()->image('original.jpg', 100, 100),
-                'name'
+                'avatar'
             );
             $model->save();
 
-            $originalFileName = $model->name;
+            $originalFileName = $model->avatar;
 
             // Create fake cache files for the original image
-            $cacheDir = Storage::disk('public')->path('glide-cache/images');
-            if (!File::isDirectory($cacheDir)) {
+            $cacheDir = Storage::disk('public')->path('glide-cache/avatars');
+            if (! File::isDirectory($cacheDir)) {
                 File::makeDirectory($cacheDir, 0755, true);
             }
 
             $baseName = pathinfo($originalFileName, PATHINFO_FILENAME);
-            $cachedFile1 = $cacheDir . '/' . $baseName . '_w200_h200.jpg';
-            $cachedFile2 = $cacheDir . '/' . $baseName . '_w400.webp';
+            $cachedFile1 = $cacheDir.'/'.$baseName.'_w200_h200.jpg';
+            $cachedFile2 = $cacheDir.'/'.$baseName.'_w400.webp';
 
             File::put($cachedFile1, 'fake cache content 1');
             File::put($cachedFile2, 'fake cache content 2');
@@ -72,11 +72,11 @@ describe('GlideCacheObserver', function () {
 
             // Update slug so the new filename will be different
             $model->fill(['slug' => 'updated-slug']);
-            
+
             // Update with new image
             $model->attachMedia(
                 UploadedFile::fake()->image('updated.jpg', 200, 200),
-                'name'
+                'avatar'
             );
             $model->save();
 
@@ -92,20 +92,20 @@ describe('GlideCacheObserver', function () {
             // Attach image
             $model->attachMedia(
                 UploadedFile::fake()->image('test.jpg', 100, 100),
-                'name'
+                'avatar'
             );
             $model->save();
 
-            $fileName = $model->name;
+            $fileName = $model->avatar;
 
             // Create fake cache file
-            $cacheDir = Storage::disk('public')->path('glide-cache/images');
-            if (!File::isDirectory($cacheDir)) {
+            $cacheDir = Storage::disk('public')->path('glide-cache/avatars');
+            if (! File::isDirectory($cacheDir)) {
                 File::makeDirectory($cacheDir, 0755, true);
             }
 
             $baseName = pathinfo($fileName, PATHINFO_FILENAME);
-            $cachedFile = $cacheDir . '/' . $baseName . '_w200.jpg';
+            $cachedFile = $cacheDir.'/'.$baseName.'_w200.jpg';
             File::put($cachedFile, 'fake cache content');
 
             expect(File::exists($cachedFile))->toBeTrue();
@@ -127,21 +127,21 @@ describe('GlideCacheObserver', function () {
             // Attach image
             $model->attachMedia(
                 UploadedFile::fake()->image('test.jpg', 100, 100),
-                'name'
+                'avatar'
             );
             $model->save();
 
-            $fileName = $model->name;
+            $fileName = $model->avatar;
 
             // Create fake cache files
-            $cacheDir = Storage::disk('public')->path('glide-cache/images');
-            if (!File::isDirectory($cacheDir)) {
+            $cacheDir = Storage::disk('public')->path('glide-cache/avatars');
+            if (! File::isDirectory($cacheDir)) {
                 File::makeDirectory($cacheDir, 0755, true);
             }
 
             $baseName = pathinfo($fileName, PATHINFO_FILENAME);
-            $cachedFile1 = $cacheDir . '/' . $baseName . '_thumbnail.jpg';
-            $cachedFile2 = $cacheDir . '/' . $baseName . '_medium.webp';
+            $cachedFile1 = $cacheDir.'/'.$baseName.'_thumbnail.jpg';
+            $cachedFile2 = $cacheDir.'/'.$baseName.'_medium.webp';
 
             File::put($cachedFile1, 'fake cache 1');
             File::put($cachedFile2, 'fake cache 2');
@@ -164,34 +164,34 @@ describe('GlideCacheObserver', function () {
             // Attach images to both columns
             $model->attachMedia(
                 UploadedFile::fake()->image('avatar.jpg', 100, 100),
-                'name'
+                'avatar'
             );
             $model->attachMedia(
-                UploadedFile::fake()->image('document.png', 200, 200),
-                'name_with_id'
+                UploadedFile::fake()->image('cover.png', 200, 200),
+                'cover_image'
             );
             $model->save();
 
-            $fileName1 = $model->name;
-            $fileName2 = $model->name_with_id;
+            $fileName1 = $model->avatar;
+            $fileName2 = $model->cover_image;
 
             // Create cache directories
-            $imagesCacheDir = Storage::disk('public')->path('glide-cache/images');
-            $docsCacheDir = Storage::disk('public')->path('glide-cache/documents');
+            $avatarsCacheDir = Storage::disk('public')->path('glide-cache/avatars');
+            $coversCacheDir = Storage::disk('public')->path('glide-cache/covers');
 
-            if (!File::isDirectory($imagesCacheDir)) {
-                File::makeDirectory($imagesCacheDir, 0755, true);
+            if (! File::isDirectory($avatarsCacheDir)) {
+                File::makeDirectory($avatarsCacheDir, 0755, true);
             }
-            if (!File::isDirectory($docsCacheDir)) {
-                File::makeDirectory($docsCacheDir, 0755, true);
+            if (! File::isDirectory($coversCacheDir)) {
+                File::makeDirectory($coversCacheDir, 0755, true);
             }
 
             // Create cached files for both columns
             $baseName1 = pathinfo($fileName1, PATHINFO_FILENAME);
             $baseName2 = pathinfo($fileName2, PATHINFO_FILENAME);
 
-            $cachedFile1 = $imagesCacheDir . '/' . $baseName1 . '_w200.jpg';
-            $cachedFile2 = $docsCacheDir . '/' . $baseName2 . '_w400.png';
+            $cachedFile1 = $avatarsCacheDir.'/'.$baseName1.'_w200.jpg';
+            $cachedFile2 = $coversCacheDir.'/'.$baseName2.'_w400.png';
 
             File::put($cachedFile1, 'fake cache 1');
             File::put($cachedFile2, 'fake cache 2');
@@ -216,7 +216,7 @@ describe('GlideCacheObserver', function () {
             // Attach image
             $model->attachMedia(
                 UploadedFile::fake()->image('test.jpg', 100, 100),
-                'name'
+                'avatar'
             );
             $model->save();
 
@@ -234,7 +234,7 @@ describe('GlideCacheObserver', function () {
             /** @var GlideMediaTest $model */
             $model = GlideMediaTest::factory()->create();
 
-            // No media attached - name column is null
+            // No media attached - avatar column is null
 
             // Delete should not throw an exception
             expect(fn () => $model->delete())->not->toThrow(Exception::class);

@@ -13,14 +13,14 @@ beforeEach(function () {
 
     // Create glide-cache directory
     $cachePath = Storage::disk('public')->path('glide-cache');
-    if (!file_exists($cachePath)) {
+    if (! file_exists($cachePath)) {
         mkdir($cachePath, 0755, true);
     }
 
     // Register Glide server
     app()->singleton('media.glide', function () {
         return ServerFactory::create([
-            'response' => new GlideResponseFactory(),
+            'response' => new GlideResponseFactory,
             'source' => Storage::disk('public')->path(''),
             'cache' => Storage::disk('public')->path('glide-cache'),
         ]);
@@ -34,8 +34,10 @@ beforeEach(function () {
     // Set config
     config()->set('model-media-glide.route_prefix', 'media');
     config()->set('model-media-glide.secure', false);
-    config()->set('model-media-glide.source', Storage::disk('public')->path(''));
-    config()->set('model-media-glide.cache', Storage::disk('public')->path('glide-cache'));
+    config()->set('model-media-glide.source_disk', 'public');
+    config()->set('model-media-glide.source_path_prefix', '');
+    config()->set('model-media-glide.cache_disk', 'public');
+    config()->set('model-media-glide.cache_path', 'glide-cache');
 
     // Register Glide routes manually for testing
     Route::prefix('media')->group(function () {
@@ -58,7 +60,7 @@ afterEach(function () {
 function createRealTestImage(string $path, int $width = 100, int $height = 100): string
 {
     $dir = dirname($path);
-    if (!file_exists($dir)) {
+    if (! file_exists($dir)) {
         mkdir($dir, 0755, true);
     }
 
@@ -120,25 +122,14 @@ describe('GlideController', function () {
             $response->assertStatus(415);
         });
 
-        it('returns 422 for file with image extension but invalid content', function () {
+        it('returns 415 for file with image extension but invalid content', function () {
             Storage::disk('public')->put('images/fake.jpg', 'not an image');
             $response = $this->get('/media/images/fake.jpg');
-            expect($response->status())->toBeIn([415, 422]);
+            $response->assertStatus(415);
         });
     });
 
     describe('signature validation', function () {
-        beforeEach(function () {
-            config()->set('model-media-glide.secure', true);
-            config()->set('model-media-glide.signature_key', 'test-secret-key-32chars-long!!');
-
-            app()->singleton(\League\Glide\Signatures\Signature::class, function () {
-                return \League\Glide\Signatures\SignatureFactory::create(
-                    config('model-media-glide.signature_key')
-                );
-            });
-        });
-
         it('returns 403 for request without signature', function () {
             setupSecureMode();
             $response = $this->get('/media/images/test.jpg');

@@ -11,15 +11,15 @@
 A lightweight, zero-boilerplate media management trait for Laravel Eloquent models. Attach files directly to your existing model attributes without adding any extra database tables or complex relationships.
 
 > [!TIP]
-> **Includes a powerful Glide integration** for on-the-fly image manipulation: resize, crop, convert formats, and generate responsive images.
+> **Includes a built-in Glide integration** for on-the-fly image manipulation: resize, crop, convert formats, and generate responsive images.
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [The Problem](#-the-problem)
 - [The Solution](#-the-solution)
-- [Comparison: Spatie vs. Model Media](#️-comparison-spatie-medialibrary-vs-laravel-model-media)
+- [Comparison: Spatie vs. Model Media](#-comparison-spatie-medialibrary-vs-laravel-model-media)
 - [Installation](#-installation)
 - [Quick Start](#-quick-start)
 - [API Reference](#-api-reference)
@@ -30,20 +30,21 @@ A lightweight, zero-boilerplate media management trait for Laravel Eloquent mode
   - [Multiple Disks](#multiple-storage-disks)
   - [Automatic Cleanup](#automatic-cleanup)
 - [Image Manipulation with Glide](#-image-manipulation-with-glide)
-  - [Installation](#glide-installation)
   - [Basic Usage](#glide-basic-usage)
   - [Transformation Parameters](#transformation-parameters)
   - [Presets](#using-presets)
   - [Responsive Images](#responsive-images-srcset)
+  - [Standalone Usage (Facade)](#standalone-usage-facade)
   - [Configuration](#glide-configuration)
   - [Security](#security)
-- [How It Works](#️-how-it-works)
+  - [Cache Cleanup](#automatic-cache-cleanup)
+- [How It Works](#-how-it-works)
 - [Testing](#-testing)
 - [Contributing](#-contributing)
 
 ---
 
-## 😰 The Problem
+## The Problem
 
 Most media management packages for Laravel (like Spatie MediaLibrary) are powerful but "heavy". They often require:
 - A new `media` table in your database.
@@ -51,19 +52,19 @@ Most media management packages for Laravel (like Spatie MediaLibrary) are powerf
 - Manual cleanup of files when models are deleted.
 - Overkill for simple use cases where you just want to store a profile picture or a document path directly on a model.
 
-## ✨ The Solution
+## The Solution
 
 **Laravel Model Media** keeps it simple. It uses your **existing database columns** to store file names.
-- ✅ **No Extra Tables**: Uses the columns you already have.
-- ✅ **Automatic Cleanup**: Deletes old files when you re-upload or delete the model.
-- ✅ **Smart Filenames**: Use model attributes or dynamic Closures for naming.
-- ✅ **Zero Config**: Just add the trait and register your media.
-- ✅ **Image Manipulation**: Built-in Glide plugin for resizing, cropping, and format conversion.
-- ✅ **Responsive Images**: Generate srcsets for `<picture>` elements automatically.
+- **No Extra Tables**: Uses the columns you already have.
+- **Automatic Cleanup**: Deletes old files when you re-upload or delete the model.
+- **Smart Filenames**: Use model attributes or dynamic Closures for naming.
+- **Zero Config**: Just add the trait and register your media.
+- **Image Manipulation**: Built-in Glide integration for resizing, cropping, and format conversion.
+- **Responsive Images**: Generate srcsets for `<picture>` elements automatically.
 
 ---
 
-## ⚖️ Comparison: Spatie MediaLibrary vs. Laravel Model Media
+## Comparison: Spatie MediaLibrary vs. Laravel Model Media
 
 | Feature | Spatie MediaLibrary | Laravel Model Media |
 | :--- | :---: | :---: |
@@ -72,26 +73,22 @@ Most media management packages for Laravel (like Spatie MediaLibrary) are powerf
 | **Complexity** | High (Conversions, Collections) | **Low** (Simple & Fast) |
 | **Performance** | Extra Join/Query for each model | **Zero extra queries** |
 | **Setup** | Migrations + Trait + Interface | **Trait only** |
-| **Image Manipulation** | Built-in conversions | **Glide plugin** (optional) |
+| **Image Manipulation** | Built-in conversions | **Glide** (included) |
 | **Ideal for** | Complex CMS, Multiple galleries | Profile pics, Single documents, Simple uploads |
 
 ---
 
-## 📦 Installation
+## Installation
 
 ```bash
 composer require dialloibrahima/laravel-model-media
 ```
 
-For image manipulation, install the optional Glide plugin:
-
-```bash
-composer require league/glide
-```
+This installs `league/glide` automatically as a dependency, giving you image manipulation out of the box.
 
 ---
 
-## ⚡ Quick Start
+## Quick Start
 
 ### 1. Prepare your Model
 
@@ -139,7 +136,7 @@ public function update(Request $request, User $user)
 ```
 
 > [!IMPORTANT]
-> Since version 2.0.3, `attachMedia` automatically calls `$this->save()`. You don't need to manually save the model unless you perform other modifications.
+> `attachMedia` automatically calls `$this->save()`. You don't need to manually save the model unless you perform other modifications.
 
 ### 3. Retrieve URLs
 
@@ -159,7 +156,7 @@ $user->delete(); // Files are cleaned up automatically
 
 ---
 
-## 📚 API Reference
+## API Reference
 
 ### HasMedia Trait
 
@@ -190,7 +187,7 @@ public function attachMedia(UploadedFile $file, string $column): bool
 
 **Behavior:**
 - Stores the file to the configured disk and directory
-- Automatically deletes any previously attached file
+- Automatically deletes any previously attached file (if the filename differs)
 - Updates the model attribute with the new filename
 - **Automatically calls `$this->save()`** to persist the changes
 
@@ -203,6 +200,11 @@ public function detachMedia(?string $column): bool
 ```
 
 **Returns:** `true` when complete.
+
+**Behavior:**
+- Deletes the file from disk
+- Sets the column to `null` and saves (only if the model still exists in the database)
+- Passing `null` is a safe no-op that returns `true`
 
 #### `getMediaUrl()`
 
@@ -222,14 +224,17 @@ Get all registered media mappings for the model.
 public function getMediaMappings(): array
 ```
 
+> [!NOTE]
+> Media mappings are scoped per model class. Each model maintains its own independent set of column mappings, so you can safely use `HasMedia` on multiple models without conflicts.
+
 ---
 
 ### HasGlideUrls Trait
 
-Adds Glide image manipulation capabilities. Requires `league/glide` package.
+Adds Glide image manipulation capabilities. Requires the `HasMedia` trait on the same model.
 
 > [!CAUTION]
-> This trait only works with image files. It validates MIME types and throws `InvalidMediaTypeException` for non-image files.
+> This trait only works with image files. It validates MIME types and returns `null` (or throws `InvalidMediaTypeException` when `throwOnError` is `true`) for non-image files.
 
 #### `getGlideUrl()`
 
@@ -275,6 +280,8 @@ public function getGlidePresetUrl(
 ): ?string
 ```
 
+**Returns:** URL with preset parameters applied, or `null` if the preset doesn't exist or the file is not a valid image.
+
 ```php
 // Use thumbnail preset (defined in config)
 $user->getGlidePresetUrl('avatar', 'thumbnail');
@@ -307,7 +314,7 @@ $srcset = $user->getGlideSrcset('hero', [375, 768, 1024, 1920]);
 **Usage in Blade:**
 
 ```blade
-<img 
+<img
     src="{{ $post->getGlideUrl('cover', ['w' => 800]) }}"
     srcset="{{ $post->getGlideSrcset('cover') }}"
     sizes="(max-width: 768px) 100vw, 800px"
@@ -333,7 +340,7 @@ public function hasImageMedia(string $column): bool
 
 ---
 
-## 🔧 Advanced Usage
+## Advanced Usage
 
 ### Dynamic Filenames via Closure
 
@@ -377,22 +384,16 @@ self::registerMediaForColumn(
 ### Automatic Cleanup
 
 You don't need to do anything! Laravel Model Media automatically:
-- **Deletes the old file** when you re-upload a new one to the same column.
+- **Deletes the old file** when you re-upload a new one to the same column (only if the filename differs).
 - **Deletes all associated files** when the model is deleted (via Model Observer).
 
 ---
 
-## 🖼️ Image Manipulation with Glide
+## Image Manipulation with Glide
 
-The package includes a powerful Glide plugin for on-the-fly image manipulation.
+The package includes a built-in [Glide](https://glide.thephpleague.com/) integration for on-the-fly image manipulation.
 
-### Glide Installation
-
-```bash
-composer require league/glide
-```
-
-Then add the `HasGlideUrls` trait to your model:
+Add the `HasGlideUrls` trait to your model alongside `HasMedia`:
 
 ```php
 use DialloIbrahima\HasMedia\HasMedia;
@@ -401,7 +402,7 @@ use DialloIbrahima\HasMedia\Plugins\Glide\HasGlideUrls;
 class User extends Model
 {
     use HasMedia, HasGlideUrls;
-    
+
     // ...
 }
 ```
@@ -412,47 +413,7 @@ Publish the Glide configuration:
 php artisan vendor:publish --tag=model-media-glide-config
 ```
 
-### ⚙️ Configuration
-
-You can publish the configuration files to customize the package behavior:
-
-```bash
-# Publish all configurations
-php artisan vendor:publish --provider="DialloIbrahima\HasMedia\LaravelModelMediaServiceProvider"
-
-# Or use specific tags
-php artisan vendor:publish --tag=laravel-model-media-config
-php artisan vendor:publish --tag=model-media-glide-config
-```
-
-> [!NOTE]
-> - `laravel-model-media-config`: General settings (currently minimal).
-> - `model-media-glide-config`: Glide-specific settings (presets, security, directories).
-
-### Standalone usage (Facade)
-
-You can generate Glide URLs anywhere (controllers, services, blade) using the `Glide` facade, even without an Eloquent model.
-
-```php
-use DialloIbrahima\HasMedia\Plugins\Glide\Facades\Glide;
-
-// Generate a signed URL for a specific path
-$url = Glide::url('avatars/user-1.jpg', ['w' => 200, 'fit' => 'crop']);
-
-// Use a preset
-$url = Glide::preset('posts/cover.png', 'medium');
-
-// Generate a responsive srcset
-$srcset = Glide::srcset('products/hero.webp', [400, 800, 1200]);
-
-// Clear cache for a specific file
-Glide::deleteCache('avatars/user-1.jpg');
-```
-
-> [!NOTE]
-> The `Glide::url()` method automatically validates that the file exists and is a valid image before generating the URL. If validation fails, it returns `null`.
-
-### Glide Basic Usage (Model)
+### Glide Basic Usage
 
 Once configured, the `HasGlideUrls` trait provides convenient methods to generate URLs directly from your models:
 
@@ -503,6 +464,7 @@ Presets allow you to define reusable transformation sets:
         'fit' => 'crop',
         'fm' => 'webp',
         'q' => 90,
+        'or' => 'auto',
     ],
     'medium' => [
         'w' => 800,
@@ -510,13 +472,15 @@ Presets allow you to define reusable transformation sets:
         'fit' => 'contain',
         'fm' => 'webp',
         'q' => 85,
+        'or' => 'auto',
     ],
     'og-image' => [
         'w' => 1200,
         'h' => 630,
         'fit' => 'crop',
-        'fm' => 'jpg',
+        'fm' => 'jpg',  // Facebook/LinkedIn don't support webp
         'q' => 85,
+        'or' => 'auto',
     ],
 ],
 ```
@@ -528,17 +492,20 @@ $thumbnailUrl = $user->getGlidePresetUrl('avatar', 'thumbnail');
 $ogImageUrl = $post->getGlidePresetUrl('cover', 'og-image');
 ```
 
+> [!NOTE]
+> `getGlidePresetUrl()` returns `null` if the preset name doesn't exist in the configuration.
+
 ### Responsive Images (srcset)
 
 Generate responsive image sets automatically:
 
 ```blade
 <picture>
-    <source 
+    <source
         srcset="{{ $post->getGlideSrcset('cover', [375, 768, 1024, 1920]) }}"
         sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
     >
-    <img 
+    <img
         src="{{ $post->getGlideUrl('cover', ['w' => 800]) }}"
         alt="{{ $post->title }}"
         loading="lazy"
@@ -546,9 +513,36 @@ Generate responsive image sets automatically:
 </picture>
 ```
 
+### Standalone Usage (Facade)
+
+You can generate Glide URLs anywhere (controllers, services, Blade) using the `Glide` facade, even without an Eloquent model:
+
+```php
+use DialloIbrahima\HasMedia\Plugins\Glide\Facades\Glide;
+
+// Generate a URL for a specific path
+$url = Glide::url('avatars/user-1.jpg', ['w' => 200, 'fit' => 'crop']);
+
+// Use a preset
+$url = Glide::preset('posts/cover.png', 'medium');
+
+// Generate a responsive srcset
+$srcset = Glide::srcset('products/hero.webp', [400, 800, 1200]);
+
+// Clear cache for a specific file
+Glide::deleteCache('avatars/user-1.jpg');
+```
+
+> [!NOTE]
+> `Glide::url()` automatically validates that the file exists and is a valid image before generating the URL. If validation fails, it returns `null`. `Glide::preset()` also returns `null` if the preset name doesn't exist.
+
 ### Glide Configuration
 
-The configuration file allows you to customize routes, security, and image presets.
+Publish the configuration file:
+
+```bash
+php artisan vendor:publish --tag=model-media-glide-config
+```
 
 ```php
 // config/model-media-glide.php
@@ -560,29 +554,40 @@ return [
 
     // Security (URL Signing)
     'secure' => env('GLIDE_SECURE', false),
-    'signature_key' => env('GLIDE_SIGNATURE_KEY'),
+    'signature_key' => env('GLIDE_SIGNATURE_KEY', ''),
+
+    // Storage Disks (supports S3, R2, and any Flysystem driver)
+    'source_disk' => env('GLIDE_SOURCE_DISK', 'public'),
+    'source_path_prefix' => env('GLIDE_SOURCE_PATH_PREFIX', ''),
+
+    'cache_disk' => env('GLIDE_CACHE_DISK', 'local'),
+    'cache_path' => env('GLIDE_CACHE_PATH', 'glide-cache'),
+
+    'watermarks_disk' => env('GLIDE_WATERMARKS_DISK', 'local'),
+    'watermarks_path' => env('GLIDE_WATERMARKS_PATH', 'watermarks'),
 
     // Server
-    'source' => storage_path('app/public'),
-    'cache' => storage_path('app/glide-cache'),
-    'driver' => 'gd', // or 'imagick'
-    'max_image_size' => 2000 * 2000,
+    'driver' => env('GLIDE_DRIVER', 'imagick'), // 'imagick' recommended over 'gd'
+    'max_image_size' => env('GLIDE_MAX_IMAGE_SIZE', 4000 * 4000), // 16MP
 
     // Presets (reusable transformation sets)
     'presets' => [
-        'avatar' => ['w' => 110, 'h' => 110, 'fit' => 'crop'],
-        'thumbnail' => ['w' => 200, 'h' => 200, 'fit' => 'crop'],
+        'avatar' => ['w' => 110, 'h' => 110, 'fit' => 'crop', 'fm' => 'webp', 'q' => 90, 'or' => 'auto'],
+        'thumbnail' => ['w' => 200, 'h' => 200, 'fit' => 'crop', 'fm' => 'webp', 'q' => 90, 'or' => 'auto'],
         // ...
     ],
 ];
 ```
 
 > [!TIP]
-> You can create as many presets as you need to maintain consistency across your application.
+> The package uses **Laravel disk names** instead of hardcoded paths. This means it works seamlessly with S3, Cloudflare R2, or any Flysystem driver. Just set `GLIDE_SOURCE_DISK=s3` in your `.env` file.
 
-### 🚀 Optimization Support
+> [!IMPORTANT]
+> `imagick` is strongly recommended over `gd` as the image driver. Imagick uses Lanczos resampling which produces sharper, cleaner results compared to gd's bilinear interpolation. Verify it's installed with `php -m | grep imagick`.
 
-The package is fully compatible with Laravel's optimization system. You can safely run:
+### Optimization Support
+
+The package is fully compatible with Laravel's optimization system:
 
 ```bash
 php artisan optimize
@@ -606,7 +611,7 @@ php artisan tinker
 >>> Str::random(32)
 ```
 
-When secure mode is enabled, all Glide URLs will be cryptographically signed.
+When secure mode is enabled, all Glide URLs will be cryptographically signed. Requests with invalid or missing signatures receive a `403` response.
 
 ### Automatic Cache Cleanup
 
@@ -633,21 +638,31 @@ use DialloIbrahima\HasMedia\Plugins\Glide\Facades\Glide;
 Glide::deleteCache('avatars/user-1.jpg');
 ```
 
-To clear the entire Glide cache:
+---
+
+## Configuration
+
+You can publish the configuration files to customize the package behavior:
 
 ```bash
-# Clear entire Glide cache
-rm -rf storage/app/glide-cache/*
+# Publish all configurations
+php artisan vendor:publish --provider="DialloIbrahima\HasMedia\LaravelModelMediaServiceProvider"
+
+# Or use specific tags
+php artisan vendor:publish --tag=laravel-model-media-config
+php artisan vendor:publish --tag=model-media-glide-config
 ```
 
+- `laravel-model-media-config`: General settings.
+- `model-media-glide-config`: Glide-specific settings (storage disks, presets, security, image driver).
 
 ---
 
-## 🏗️ How It Works
+## How It Works
 
 ```mermaid
 graph TD
-    subgraph Upload ["📤 1. ATTACH (Upload)"]
+    subgraph Upload ["1. ATTACH (Upload)"]
         A[File Uploaded] --> B[attachMedia Method]
         B --> C[Retrieve Mapping]
         C --> D[Generate Filename]
@@ -655,19 +670,19 @@ graph TD
         E --> F[Update Model Attribute]
     end
 
-    subgraph Update ["🔄 2. UPDATE (Auto-Cleanup)"]
+    subgraph Update ["2. UPDATE (Auto-Cleanup)"]
         G[Replace File] --> H[Identify Old File]
         H --> I[Delete Old File from Disk]
         I --> J[Proceed with New Upload]
     end
 
-    subgraph Delete ["🗑️ 3. DELETE (Full Cleanup)"]
+    subgraph Delete ["3. DELETE (Full Cleanup)"]
         K[Model Deleted] --> L[MediaObserver Triggers]
         L --> M[Fetch All Mappings]
         M --> N[Delete All Files from Disk]
     end
 
-    subgraph Glide ["🖼️ 4. GLIDE (Image Transform)"]
+    subgraph Glide ["4. GLIDE (Image Transform)"]
         O[getGlideUrl Called] --> P[Validate Image Type]
         P --> Q[Build Transform URL]
         Q --> R[Glide Server Processes]
@@ -681,7 +696,7 @@ graph TD
 
 ---
 
-## 🧪 Testing
+## Testing
 
 The package includes a robust test suite. You can run it via composer:
 
@@ -690,25 +705,27 @@ composer test
 ```
 
 We test for:
-- ✅ Correct storage path and filename generation.
-- ✅ Automatic deletion of old media on update.
-- ✅ Garbage collection of files on model deletion.
-- ✅ Glide URL generation and transformation.
-- ✅ Glide preset and srcset generation.
-- ✅ Image type validation (only images allowed for Glide).
-- ✅ Error handling for non-image files.
+- Correct storage path and filename generation
+- Automatic deletion of old media on update
+- Garbage collection of files on model deletion
+- Glide URL generation and transformation
+- Glide preset and srcset generation
+- Image type validation (only images allowed for Glide)
+- Error handling for non-image files (`InvalidMediaTypeException`)
+- Glide response factory (streaming, caching headers, 304 Not Modified)
+- Signature validation for secure URLs
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Please see [CONTRIBUTING](CONTRIBUTING.md) for details.
 
-## 📄 License
+## License
 
 The MIT License (MIT). Please see [License File](LICENSE.md) for more information.
 
-## 👨‍💻 Credits
+## Credits
 
 - [Ibrahima Diallo](https://github.com/ibra379)
 - [All Contributors](../../contributors)

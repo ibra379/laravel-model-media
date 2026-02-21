@@ -10,8 +10,8 @@ use Workbench\Database\Factories\MediaTestFactory;
 
 /**
  * @property-read int $id
- * @property-read string|null $name
- * @property-read string|null $name_with_id
+ * @property-read string|null $avatar
+ * @property-read string|null $cover_image
  * @property-read string $slug
  */
 class MediaTest extends Model
@@ -30,14 +30,14 @@ class MediaTest extends Model
     protected static function booted(): void
     {
         self::registerMediaForColumn(
-            column: 'name',
-            directory: 'documents',
+            column: 'avatar',
+            directory: 'avatars',
             fileName: 'slug'
         );
 
         self::registerMediaForColumn(
-            column: 'name_with_id',
-            directory: 'documents',
+            column: 'cover_image',
+            directory: 'covers',
             fileName: fn ($model) => $model->id.'-'.Str::random()
         );
     }

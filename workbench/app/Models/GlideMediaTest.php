@@ -9,18 +9,14 @@ use Illuminate\Database\Eloquent\Model;
 use Workbench\Database\Factories\GlideMediaTestFactory;
 
 /**
- * Model per testare HasGlideUrls trait
- * 
- * Usa le stesse colonne di MediaTest ma con HasGlideUrls trait aggiunto
- *
  * @property-read int $id
- * @property-read string|null $name
- * @property-read string|null $name_with_id
+ * @property-read string|null $avatar
+ * @property-read string|null $cover_image
  * @property-read string $slug
  */
 class GlideMediaTest extends Model
 {
-    use HasFactory, HasMedia, HasGlideUrls;
+    use HasFactory, HasGlideUrls, HasMedia;
 
     protected static function newFactory(): GlideMediaTestFactory
     {
@@ -33,17 +29,15 @@ class GlideMediaTest extends Model
 
     protected static function booted(): void
     {
-        // Usa 'name' come colonna immagine (esistente nel DB)
         self::registerMediaForColumn(
-            column: 'name',
-            directory: 'images',
+            column: 'avatar',
+            directory: 'avatars',
             fileName: 'slug'
         );
 
-        // Usa 'name_with_id' per testare file non-immagine
         self::registerMediaForColumn(
-            column: 'name_with_id',
-            directory: 'documents',
+            column: 'cover_image',
+            directory: 'covers',
             fileName: 'slug'
         );
     }

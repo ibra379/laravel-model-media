@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Storage;
 
 trait HasMedia
 {
-    /** @var array<string, MediaMapping> */
+    /** @var array<class-string, array<string, MediaMapping>> */
     private static array $mediaMappings = [];
 
     public static function bootHasMedia(): void
@@ -18,12 +18,11 @@ trait HasMedia
     }
 
     protected static function registerMediaForColumn(
-        string         $column,
-        string         $directory,
+        string $column,
+        string $directory,
         string|Closure $fileName,
-        string         $disk = 'public'
-    ): void
-    {
+        string $disk = 'public'
+    ): void {
         $mapping = new MediaMapping(
             column: $column,
             directory: $directory,
@@ -31,7 +30,7 @@ trait HasMedia
             disk: $disk
         );
 
-        self::$mediaMappings[$column] = $mapping;
+        self::$mediaMappings[static::class][$column] = $mapping;
     }
 
     public function attachMedia(UploadedFile $file, string $column): bool
@@ -62,19 +61,24 @@ trait HasMedia
 
     public function detachMedia(?string $column): bool
     {
-        if (!$column) {
+        if (! $column) {
             return true;
         }
 
         $mapping = self::getMediaMappingForColumn($column);
 
         $fileName = $this->getAttribute($column);
-        if (!$fileName) {
+        if (! $fileName) {
             return true;
         }
+
         $directory = $mapping->getDirectory();
         Storage::disk($mapping->getDisk())->delete(sprintf('%s/%s', $directory, $fileName));
-        $this->update([$column => null]);
+
+        if ($this->exists) {
+            $this->setAttribute($column, null);
+            $this->save();
+        }
 
         return true;
     }
@@ -84,7 +88,7 @@ trait HasMedia
         $mapping = self::getMediaMappingForColumn($column);
 
         $fileName = $this->getAttribute($column);
-        if (!$fileName) {
+        if (! $fileName) {
             return null;
         }
 
@@ -100,13 +104,17 @@ trait HasMedia
      */
     public function getMediaMappings(): array
     {
-        return self::$mediaMappings;
+        return self::$mediaMappings[static::class] ?? [];
     }
 
-    private static function getMediaMappingForColumn(string $column): ?MediaMapping
+    private static function getMediaMappingForColumn(string $column): MediaMapping
     {
-        $mapping = self::$mediaMappings[$column] ?? null;
-        assert($mapping instanceof MediaMapping, 'No media mapping found for column: ' . $column);
+        $mapping = self::$mediaMappings[static::class][$column] ?? null;
+
+        if (! $mapping instanceof MediaMapping) {
+            throw new \RuntimeException('No media mapping found for column: '.$column);
+        }
+
         return $mapping;
     }
 }

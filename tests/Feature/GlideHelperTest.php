@@ -1,7 +1,5 @@
 <?php
 
-namespace DialloIbrahima\HasMedia\Tests\Feature;
-
 use DialloIbrahima\HasMedia\Plugins\Glide\Facades\Glide;
 use DialloIbrahima\HasMedia\Plugins\Glide\GlideHelper;
 use Illuminate\Support\Facades\Config;
@@ -20,7 +18,8 @@ beforeEach(function () {
     Storage::disk('public')->put('avatars/user1.jpg', $content);
 
     // Set config
-    Config::set('model-media-glide.source', Storage::disk('public')->path(''));
+    Config::set('model-media-glide.source_disk', 'public');
+    Config::set('model-media-glide.source_path_prefix', '');
     Config::set('model-media-glide.route_prefix', 'media');
     Config::set('model-media-glide.secure', false);
 });
@@ -88,19 +87,22 @@ describe('GlideHelper', function () {
         expect(Glide::url(''))->toBeNull();
     });
 
-    it('handles missing presets by returning basic url', function () {
+    it('returns null for missing presets', function () {
         $path = 'avatars/user1.jpg';
         $url = Glide::preset($path, 'non-existent');
 
-        expect($url)->toContain('/media/avatars/user1.jpg');
+        expect($url)->toBeNull();
     });
 
     it('can delete cache for a file', function () {
         $path = 'avatars/user1.jpg';
-        $cacheDir = sys_get_temp_dir().'/glide-cache';
-        Config::set('model-media-glide.cache', $cacheDir);
+
+        // Use the fake public disk for cache
+        Config::set('model-media-glide.cache_disk', 'public');
+        Config::set('model-media-glide.cache_path', 'glide-cache');
 
         // Create dummy cache files
+        $cacheDir = Storage::disk('public')->path('glide-cache');
         $cachePath = $cacheDir.'/avatars';
         if (! is_dir($cachePath)) {
             mkdir($cachePath, 0777, true);
@@ -116,9 +118,5 @@ describe('GlideHelper', function () {
 
         expect(is_file($cachePath.'/user1.jpg.hash1'))->toBeFalse();
         expect(is_file($cachePath.'/user1.jpg.hash2'))->toBeFalse();
-
-        // Cleanup
-        rmdir($cachePath);
-        rmdir($cacheDir);
     });
 });

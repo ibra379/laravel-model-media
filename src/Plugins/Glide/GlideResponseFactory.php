@@ -28,7 +28,7 @@ final class GlideResponseFactory implements ResponseFactoryInterface
         try {
             $lastModified = new DateTimeImmutable(sprintf('@%d', $cache->lastModified($path)));
 
-            $response = new StreamedResponse();
+            $response = new StreamedResponse;
 
             $response->headers->set('Content-Type', $cache->mimeType($path));
             $response->headers->set('Content-Length', (string) $cache->fileSize($path));
@@ -38,19 +38,18 @@ final class GlideResponseFactory implements ResponseFactoryInterface
             $response->setMaxAge(31_536_000);
             $response->setExpires(new DateTimeImmutable('+1 year'));
             $response->setLastModified($lastModified);
-            $response->setEtag(md5($path . $lastModified->getTimestamp()));
+            $response->setEtag(md5($path.$lastModified->getTimestamp()));
 
-            // Return 304 Not Modified without reading the stream
-            if ($this->request && $response->isNotModified($this->request)) {
-                return $response;
+            // Let Symfony handle 304 — isNotModified() sets the status internally.
+            // The callback won't be executed when the response is 304.
+            $currentRequest = $this->request ?? (function_exists('request') ? request() : null);
+            if ($currentRequest) {
+                $response->isNotModified($currentRequest);
             }
 
-            $stream = $cache->readStream($path);
-
-            $response->setCallback(function () use ($stream): void {
-                if (ftell($stream) !== 0) {
-                    rewind($stream);
-                }
+            // Lazy stream: opened only when Symfony actually sends the body (not on 304)
+            $response->setCallback(function () use ($cache, $path): void {
+                $stream = $cache->readStream($path);
                 fpassthru($stream);
                 fclose($stream);
             });
@@ -58,7 +57,7 @@ final class GlideResponseFactory implements ResponseFactoryInterface
             return $response;
         } catch (FilesystemException $e) {
             throw new \RuntimeException(
-                'Error while reading cached image: ' . $e->getMessage(),
+                'Error while reading cached image: '.$e->getMessage(),
                 $e->getCode(),
                 $e
             );

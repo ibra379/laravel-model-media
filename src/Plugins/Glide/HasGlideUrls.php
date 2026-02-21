@@ -59,7 +59,7 @@ trait HasGlideUrls
             return null;
         }
 
-        return $this->getGlideHelper()->url($mediaPath['fullPath'], $params, validate: false);
+        return $this->getGlideHelper()->url($mediaPath['glidePath'], $params, validate: false);
     }
 
     /**
@@ -131,7 +131,7 @@ trait HasGlideUrls
             return null;
         }
 
-        return $this->getGlideHelper()->srcset($mediaPath['fullPath'], $widths, validate: false);
+        return $this->getGlideHelper()->srcset($mediaPath['glidePath'], $widths, validate: false);
     }
 
     /**
@@ -288,8 +288,12 @@ trait HasGlideUrls
     /**
      * Resolve media path information for a column
      *
+     * Automatically calculates the relative prefix between the model's storage disk
+     * and Glide's source_disk, so Glide can locate the file regardless of which
+     * disk the media was stored on.
+     *
      * @param  string  $column  Column name
-     * @return array{mapping: MediaMapping, fullPath: string, disk: string, absolutePath: string}|null
+     * @return array{mapping: MediaMapping, fullPath: string, glidePath: string, disk: string, absolutePath: string}|null
      */
     private function resolveMediaPath(string $column): ?array
     {
@@ -319,9 +323,17 @@ trait HasGlideUrls
             return null;
         }
 
+        // Calculate relative prefix between model disk and Glide source disk
+        $glideDisk = config('model-media-glide.source_disk', 'public');
+        $diskRoot = rtrim(Storage::disk($disk)->path(''), DIRECTORY_SEPARATOR);
+        $glideRoot = rtrim(Storage::disk($glideDisk)->path(''), DIRECTORY_SEPARATOR);
+        $prefix = ltrim(str_replace($glideRoot, '', $diskRoot), DIRECTORY_SEPARATOR);
+        $glidePath = $prefix !== '' ? $prefix.'/'.$fullPath : $fullPath;
+
         return [
             'mapping' => $mapping,
             'fullPath' => $fullPath,
+            'glidePath' => $glidePath,
             'disk' => $disk,
             'absolutePath' => Storage::disk($disk)->path($fullPath),
         ];

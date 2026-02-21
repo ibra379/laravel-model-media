@@ -2,6 +2,36 @@
 
 All notable changes to `laravel-model-media` will be documented in this file.
 
+## v3.0.0 - 2026-02-21
+
+### Bug Fixes
+- **Fixed**: Removed `league/glide` from `suggest` block — already a hard dependency in `require`.
+- **Fixed**: Static `$mediaMappings` now keyed by `static::class` to prevent cross-model collisions.
+- **Fixed**: Replaced `assert()` with `RuntimeException` in `getMediaMappingForColumn()` — `assert()` is disabled in production.
+- **Fixed**: `detachMedia()` no longer calls `setAttribute()`/`save()` on deleted models (only updates when `$this->exists`).
+- **Fixed**: Removed invalid `image/jpg` MIME type from `ALLOWED_MIME_TYPES` (correct type is `image/jpeg`).
+- **Fixed**: SVG files no longer rejected by `getimagesize()` validation — bypassed in `GlideHelper` and `GlideController`.
+- **Fixed**: `GlideResponseFactory` now receives the Symfony `Request` for proper `304 Not Modified` support.
+- **Fixed**: `GlideController` resolves source paths via `Storage::disk()` instead of hardcoded paths, enabling S3/R2 compatibility.
+- **Fixed**: `GlideHelper::preset()` returns `null` for unknown presets instead of generating a URL without parameters.
+
+### Improvements
+- **Improved**: Default image driver changed from `gd` to `imagick` (sharper Lanczos resampling).
+- **Improved**: Default `max_image_size` raised from `2000*2000` to `4000*4000` (16MP) for high-resolution photos.
+- **Improved**: All presets now include `'fm' => 'webp'` and `'or' => 'auto'` for better compression and EXIF orientation.
+- **Improved**: `GlideController` uses `GlideHelper::ALLOWED_MIME_TYPES` constant instead of duplicated array.
+- **Improved**: Facade alias added to `composer.json` for IDE auto-discovery.
+
+### New
+- **Added**: `GlideResponseFactory` with streaming, 1-year cache headers, ETag, and `304 Not Modified`.
+- **Added**: `InvalidMediaTypeException` with named constructors: `notAnImage()`, `fileNotFound()`, `corruptedImage()`.
+- **Added**: 14 new tests (77 total).
+- **Added**: Full README rewrite reflecting the current architecture.
+
+### Breaking Changes
+- **Changed**: Config keys renamed from `source`/`cache` to `source_disk`, `cache_disk`, `cache_path` — republish with `php artisan vendor:publish --tag=model-media-glide-config`.
+- **Changed**: `GlideHelper::preset()` returns `null` for unknown presets (previously returned URL without parameters).
+
 ## v2.1.0 - 2026-02-11
 
 - **Added**: Standalone `Glide` facade and `GlideHelper` service for image manipulation anywhere in the application.

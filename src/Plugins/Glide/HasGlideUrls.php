@@ -19,9 +19,12 @@ trait HasGlideUrls
      */
     public static function bootHasGlideUrls(): void
     {
-        if (app()->bound('media.glide') || class_exists(ServerFactory::class)) {
-            static::observe(GlideCacheObserver::class);
+        if (! (app()->bound('media.glide') || class_exists(ServerFactory::class))) {
+            return;
         }
+
+        static::updating(fn ($model) => (new GlideCacheObserver)->updating($model));
+        static::deleted(fn ($model) => (new GlideCacheObserver)->deleted($model));
     }
 
     /**

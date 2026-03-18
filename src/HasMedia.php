@@ -3,7 +3,6 @@
 namespace DialloIbrahima\HasMedia;
 
 use Closure;
-use DialloIbrahima\HasMedia\Observers\MediaObserver;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -14,7 +13,11 @@ trait HasMedia
 
     public static function bootHasMedia(): void
     {
-        self::observe(MediaObserver::class);
+        static::deleted(function ($model) {
+            foreach ($model->getMediaMappings() as $column => $mapping) {
+                $model->detachMedia($column);
+            }
+        });
     }
 
     protected static function registerMediaForColumn(

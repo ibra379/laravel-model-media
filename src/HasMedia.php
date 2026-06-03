@@ -48,12 +48,15 @@ trait HasMedia
         );
 
         if ($stored) {
-            // Delete an old file only if storage succeeded AND filenames differ
+            // Persist the new filename first. Only after the DB row is safely
+            // updated do we delete the old file, so a failing save() can never
+            // leave the model pointing at a file we already removed.
+            $this->setAttribute($column, $newFileName);
+            $this->save();
+
             if ($oldFileName && $oldFileName !== $newFileName) {
                 Storage::disk($mapping->getDisk())->delete(sprintf('%s/%s', $directory, $oldFileName));
             }
-            $this->setAttribute($column, $newFileName);
-            $this->save();
         }
 
         return boolval($stored);

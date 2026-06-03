@@ -1,0 +1,109 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Called ''env'' outside of the config directory which returns null when the config is cached, use ''config''\.$#'
+			identifier: larastan.noEnvCallsOutsideOfConfig
+			count: 12
+			path: config/model-media-glide.php
+
+		-
+			message: '#^Left side of && is always true\.$#'
+			identifier: booleanAnd.leftAlwaysTrue
+			count: 1
+			path: src/Plugins/Glide/GlideResponseFactory.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getMediaMappings\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: src/Plugins/Glide/Observers/GlideCacheObserver.php
+
+		-
+			message: '#^Call to an undefined method Pest\\PendingCalls\\TestCall\:\:expect\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/ArchTest.php
+
+		-
+			message: '#^Access to an undefined property PHPUnit\\Framework\\TestCase\:\:\$cacheDir\.$#'
+			identifier: property.notFound
+			count: 1
+			path: tests/Feature/GlideCacheObserverTest.php
+
+		-
+			message: '#^Property Workbench\\App\\Models\\GlideMediaTest\:\:\$slug is not writable\.$#'
+			identifier: assign.propertyReadOnly
+			count: 1
+			path: tests/Feature/GlideCacheObserverTest.php
+
+		-
+			message: '#^Call to an undefined method PHPUnit\\Framework\\TestCase\:\:get\(\)\.$#'
+			identifier: method.notFound
+			count: 24
+			path: tests/Feature/GlideControllerTest.php
+
+		-
+			message: '#^Call to deprecated function imagedestroy\(\)\.$#'
+			identifier: function.deprecated
+			count: 1
+			path: tests/Feature/GlideControllerTest.php
+
+		-
+			message: '#^Call to deprecated function imagedestroy\(\)\.$#'
+			identifier: function.deprecated
+			count: 2
+			path: tests/Feature/GlideHelperTest.php
+
+		-
+			message: '#^Call to deprecated function imagedestroy\(\)\.$#'
+			identifier: function.deprecated
+			count: 1
+			path: tests/Feature/GlideResponseFactoryTest.php
+
+		-
+			message: '#^Call to deprecated method setAccessible\(\) of class ReflectionMethod\.$#'
+			identifier: method.deprecated
+			count: 1
+			path: tests/Feature/HasGlideUrlsTest.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:attachMedia\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/HasMediaTest.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:getMediaMappings\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: tests/Feature/HasMediaTest.php
+
+		-
+			message: '#^Parameter \#1 \$value of function expect contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: tests/Feature/HasMediaTest.php
+
+		-
+			message: '#^Call to function method_exists\(\) with \$this\(Workbench\\App\\Models\\GlideMediaTest\) and ''getAttribute'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: workbench/app/Models/GlideMediaTest.php
+
+		-
+			message: '#^Call to function method_exists\(\) with \$this\(Workbench\\App\\Models\\GlideMediaTest\) and ''getMediaMappings'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: workbench/app/Models/GlideMediaTest.php
+
+		-
+			message: '#^Call to function method_exists\(\) with \$this\(Workbench\\App\\Models\\GlideSoftDeleteMediaTest\) and ''getAttribute'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: workbench/app/Models/GlideSoftDeleteMediaTest.php
+
+		-
+			message: '#^Call to function method_exists\(\) with \$this\(Workbench\\App\\Models\\GlideSoftDeleteMediaTest\) and ''getMediaMappings'' will always evaluate to true\.$#'
+			identifier: function.alreadyNarrowedType
+			count: 1
+			path: workbench/app/Models/GlideSoftDeleteMediaTest.php

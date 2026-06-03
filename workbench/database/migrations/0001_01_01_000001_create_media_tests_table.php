@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('cover_image')->nullable();
             $table->text('slug')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->unique(['slug']);
         });

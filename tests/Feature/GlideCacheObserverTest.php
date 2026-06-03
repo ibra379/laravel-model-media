@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use League\Glide\ServerFactory;
 use Workbench\App\Models\GlideMediaTest;
+use Workbench\App\Models\GlideSoftDeleteMediaTest;
 
 beforeEach(function () {
     Storage::fake('public');
@@ -111,7 +112,7 @@ describe('GlideCacheObserver', function () {
             expect(File::exists($cachedFile))->toBeTrue();
 
             // Update a non-media column
-            $model->slug = 'new-slug';
+            $model->fill(['slug' => 'new-slug']);
             $model->save();
 
             // Cache should still exist
@@ -238,6 +239,36 @@ describe('GlideCacheObserver', function () {
 
             // Delete should not throw an exception
             expect(fn () => $model->delete())->not->toThrow(Exception::class);
+        });
+    });
+
+    describe('on soft delete', function () {
+        it('keeps the cache on soft delete and clears it on force delete', function () {
+            /** @var GlideSoftDeleteMediaTest $model */
+            $model = GlideSoftDeleteMediaTest::factory()->create();
+
+            $model->attachMedia(
+                UploadedFile::fake()->image('test.jpg', 100, 100),
+                'avatar'
+            );
+            $model->save();
+
+            $cacheDir = Storage::disk('public')->path('glide-cache/avatars');
+            if (! File::isDirectory($cacheDir)) {
+                File::makeDirectory($cacheDir, 0755, true);
+            }
+
+            $baseName = pathinfo($model->avatar, PATHINFO_FILENAME);
+            $cachedFile = $cacheDir.'/'.$baseName.'_thumbnail.jpg';
+            File::put($cachedFile, 'fake cache');
+
+            // Soft delete must keep the cache (source file still exists).
+            $model->delete();
+            expect(File::exists($cachedFile))->toBeTrue();
+
+            // Force delete must purge it.
+            $model->forceDelete();
+            expect(File::exists($cachedFile))->toBeFalse();
         });
     });
 });

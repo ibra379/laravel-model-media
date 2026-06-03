@@ -76,7 +76,7 @@ trait HasMedia
         }
 
         $directory = $mapping->getDirectory();
-        $GLOBALS['detach_log'][] = 'detach '.$column.'/'.$fileName.' from '.collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 8))->map(fn ($f) => ($f['class'] ?? '').($f['type'] ?? '').($f['function'] ?? ''))->implode(' <- ');
+        $GLOBALS['detach_log'][] = 'detach '.$column.'/'.$fileName.' from '.collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 10))->map(fn ($f) => ($f['class'] ?? '').($f['type'] ?? '').($f['function'] ?? '').'@'.basename($f['file'] ?? '?').':'.($f['line'] ?? '?'))->implode(' <- ');
         Storage::disk($mapping->getDisk())->delete(sprintf('%s/%s', $directory, $fileName));
 
         if ($this->exists) {

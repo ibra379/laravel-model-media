@@ -87,22 +87,13 @@ trait HasGlideUrls
      */
     public function getGlidePresetUrl(string $column, string $preset, bool $throwOnError = false): ?string
     {
-        if (! $this->hasMediaTrait()) {
-            return null;
-        }
-
         $presets = config('model-media-glide.presets', []);
 
         if (! isset($presets[$preset])) {
             return null;
         }
 
-        $mediaPath = $this->resolveMediaPath($column);
-
-        if (! $mediaPath) {
-            return null;
-        }
-
+        // Delegate to getGlideUrl, which resolves and validates the media once.
         return $this->getGlideUrl($column, $presets[$preset], $throwOnError);
     }
 
@@ -147,13 +138,12 @@ trait HasGlideUrls
      *
      * @example
      *
-     * @if($user->hasImageMedia('avatar'))
-     *     <img src="{{ $user->getGlideUrl('avatar', ['w' => 200]) }}">
-     *
-     * @else
-     *     <img src="{{ asset('images/default-avatar.jpg') }}">
-     *
-     * @endif
+     * In Blade:
+     *   // @if($user->hasImageMedia('avatar'))
+     *   //     <img src="{{ $user->getGlideUrl('avatar', ['w' => 200]) }}">
+     *   // @else
+     *   //     <img src="{{ asset('images/default-avatar.jpg') }}">
+     *   // @endif
      */
     public function hasImageMedia(string $column): bool
     {
@@ -214,7 +204,7 @@ trait HasGlideUrls
      *
      * @param  string  $column  Column name
      * @param  bool  $throwOnError  If true, throws exception on error
-     * @return array{mapping: MediaMapping, fullPath: string, disk: string, absolutePath: string}|null
+     * @return array{mapping: MediaMapping, fullPath: string, glidePath: string, disk: string, absolutePath: string}|null
      *
      * @throws InvalidMediaTypeException
      */

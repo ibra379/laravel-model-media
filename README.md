@@ -187,9 +187,9 @@ public function attachMedia(UploadedFile $file, string $column): bool
 
 **Behavior:**
 - Stores the file to the configured disk and directory
-- Automatically deletes any previously attached file (if the filename differs)
 - Updates the model attribute with the new filename
 - **Automatically calls `$this->save()`** to persist the changes
+- Deletes any previously attached file (if the filename differs) **only after** the model is saved successfully, so a failed save never removes the old file
 
 #### `detachMedia()`
 
@@ -386,6 +386,9 @@ self::registerMediaForColumn(
 You don't need to do anything! Laravel Model Media automatically:
 - **Deletes the old file** when you re-upload a new one to the same column (only if the filename differs).
 - **Deletes all associated files** when the model is deleted (via Model Observer).
+
+> [!NOTE]
+> **Soft deletes are respected.** If your model uses the `SoftDeletes` trait, media files are **kept** on a soft delete and removed only on `forceDelete()`. This means a `restore()` always brings back a record that still has its files.
 
 ---
 
@@ -620,6 +623,9 @@ The `HasGlideUrls` trait automatically registers a `GlideCacheObserver` that cle
 - **Image is updated**: When you attach a new image to a column, the old cached versions are deleted
 - **Model is deleted**: All cached images for the model are removed
 
+> [!NOTE]
+> Like the file cleanup, this is **soft-delete aware**: the Glide cache is kept on a soft delete and purged only on `forceDelete()`.
+
 This happens automatically - you don't need to configure anything. The observer:
 
 1. Detects when a media column changes
@@ -708,6 +714,7 @@ We test for:
 - Correct storage path and filename generation
 - Automatic deletion of old media on update
 - Garbage collection of files on model deletion
+- Soft-delete awareness (files and cache kept on soft delete, removed on force delete)
 - Glide URL generation and transformation
 - Glide preset and srcset generation
 - Image type validation (only images allowed for Glide)

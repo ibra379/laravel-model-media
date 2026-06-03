@@ -5,6 +5,7 @@ namespace DialloIbrahima\HasMedia\Plugins\Glide\Controllers;
 use DialloIbrahima\HasMedia\Plugins\Glide\GlideHelper;
 use Exception;
 use Illuminate\Routing\Controller;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use League\Glide\Signatures\Signature;
 use League\Glide\Signatures\SignatureException;
@@ -53,8 +54,13 @@ class GlideController extends Controller
             // Glide automatically caches the result
             return $server->getImageResponse($path, request()->all());
         } catch (Exception $e) {
-            // Handle Glide processing errors
-            abort(500, 'Error processing image: '.$e->getMessage());
+            // Log the internals, but never leak them to the client.
+            Log::error('Glide image processing failed', [
+                'path' => $path,
+                'exception' => $e,
+            ]);
+
+            abort(500, 'Error processing image.');
         }
     }
 

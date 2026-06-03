@@ -2,6 +2,21 @@
 
 All notable changes to `laravel-model-media` will be documented in this file.
 
+## v3.1.0 - 2026-06-03
+
+### Bug Fixes
+- **Fixed**: `attachMedia()` now persists the new filename and calls `save()` **before** deleting the old file. A failing `save()` can no longer leave the model pointing at a file that was already removed (data loss).
+- **Fixed**: Soft-deleting models no longer delete their media files or Glide cache. Files are kept on soft delete and removed only on `forceDelete()`, so a `restore()` never resurrects a record whose files are gone. (Affects `MediaObserver` and `GlideCacheObserver`.)
+- **Fixed**: `GlideController` now logs image-processing exceptions server-side and returns a generic message to the client instead of leaking the underlying exception details.
+
+### Improvements
+- **Improved**: `getGlidePresetUrl()` resolves and validates the media only once (removed a redundant filesystem round-trip).
+- **Improved**: Corrected the `resolveAndValidateImageMedia()` PHPDoc return shape (now includes `glidePath`) and fixed an invalid `@if` PHPDoc tag in `HasGlideUrls`.
+- **Improved**: Added a PHPStan baseline for framework/test false-positives so `composer analyse` runs clean.
+
+### New
+- **Added**: 4 new tests covering `SoftDeletes` retention/cleanup for both `HasMedia` and `GlideCacheObserver` (81 total).
+
 ## v3.0.0 - 2026-02-21
 
 ### Bug Fixes

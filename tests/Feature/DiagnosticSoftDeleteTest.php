@@ -1,7 +1,7 @@
 <?php
 
-use DialloIbrahima\HasMedia\Observers\MediaObserver;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Workbench\App\Models\SoftDeleteMediaTest;
@@ -15,17 +15,25 @@ afterEach(function () {
 });
 
 it('DIAGNOSTIC dumps soft delete observer facts', function () {
-    MediaObserver::$diag = [];
+    $GLOBALS['detach_log'] = [];
+    $events = [];
+    Event::listen('eloquent.*', function ($name, $data) use (&$events) {
+        if (str_contains($name, 'SoftDeleteMediaTest')) {
+            $events[] = str_replace('eloquent.', '', explode(':', $name)[0]);
+        }
+    });
 
     $root = Storage::disk('public')->path('');
     $model = SoftDeleteMediaTest::factory()->create();
     $model->attachMedia(UploadedFile::fake()->create('t.jpg', 100), 'avatar');
 
-    $pre = 'pre:avatar=['.$model->avatar.'],files=['.implode(',', array_map(fn ($p) => str_replace($root, '', $p), File::allFiles($root))).']';
+    $pre = "pre:avatar=[{$model->avatar}]";
+    $events = []; // reset, only capture delete-phase events
 
     $model->delete(); // soft
 
-    $post = 'post:avatar=['.$model->avatar.'],files=['.(File::isDirectory($root) ? implode(',', array_map(fn ($p) => str_replace($root, '', $p), File::allFiles($root))) : '<gone>').']';
+    $files = File::isDirectory($root) ? implode(',', array_map(fn ($p) => str_replace($root, '', $p), File::allFiles($root))) : '<gone>';
+    $report = "{$pre} || EVENTS=[".implode(',', $events)."] || DETACH=[".implode(' ;; ', $GLOBALS['detach_log'])."] || post:avatar=[{$model->avatar}],files=[{$files}]";
 
-    expect($pre.' || OBS=['.implode(' ;; ', MediaObserver::$diag).'] || '.$post)->toBe('___DIAGNOSTIC___');
+    expect($report)->toBe('___DIAGNOSTIC___');
 });

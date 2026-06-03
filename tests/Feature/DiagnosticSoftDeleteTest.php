@@ -15,25 +15,27 @@ afterEach(function () {
 });
 
 it('DIAGNOSTIC dumps soft delete observer facts', function () {
-    $model = SoftDeleteMediaTest::factory()->create();
+    $GLOBALS['diag'] = [];
 
-    $usesSoftDeletes = in_array(SoftDeletes::class, class_uses_recursive($model), true) ? 1 : 0;
+    SoftDeleteMediaTest::deleting(function ($m) {
+        $GLOBALS['diag'][] = 'deleting:uses='.(in_array(SoftDeletes::class, class_uses_recursive($m), true) ? 1 : 0).',forcing='.($m->isForceDeleting() ? 1 : 0).',avatar=['.$m->avatar.']';
+    });
+    SoftDeleteMediaTest::deleted(function ($m) {
+        $GLOBALS['diag'][] = 'deleted:uses='.(in_array(SoftDeletes::class, class_uses_recursive($m), true) ? 1 : 0).',forcing='.($m->isForceDeleting() ? 1 : 0).',avatar=['.$m->avatar.']';
+    });
+    SoftDeleteMediaTest::forceDeleted(function ($m) {
+        $GLOBALS['diag'][] = 'forceDeleted';
+    });
 
     $root = Storage::disk('public')->path('');
+    $model = SoftDeleteMediaTest::factory()->create();
+    $model->attachMedia(UploadedFile::fake()->create('t.jpg', 100), 'avatar');
 
-    $stored = $model->attachMedia(UploadedFile::fake()->create('t.jpg', 100), 'avatar') ? 1 : 0;
-    $path = 'avatars/'.$model->avatar;
-
-    $existedBefore = Storage::disk('public')->exists($path) ? 1 : 0;
-    $allFilesBefore = implode(',', array_map(fn ($p) => str_replace($root, '', $p), File::allFiles($root)));
+    $GLOBALS['diag'][] = 'preDelete:avatar=['.$model->avatar.'],files=['.implode(',', array_map(fn ($p) => str_replace($root, '', $p), File::allFiles($root))).']';
 
     $model->delete(); // soft
 
-    $existedAfter = Storage::disk('public')->exists($path) ? 1 : 0;
-    $rootExistsAfter = File::isDirectory($root) ? 1 : 0;
-    $allFilesAfter = $rootExistsAfter ? implode(',', array_map(fn ($p) => str_replace($root, '', $p), File::allFiles($root))) : '<root-gone>';
+    $GLOBALS['diag'][] = 'postDelete:avatar=['.$model->avatar.'],files=['.(File::isDirectory($root) ? implode(',', array_map(fn ($p) => str_replace($root, '', $p), File::allFiles($root))) : '<gone>').']';
 
-    $report = "uses={$usesSoftDeletes} stored={$stored} avatar=[{$model->avatar}] slug=[{$model->slug}] root=[{$root}] before={$existedBefore} after={$existedAfter} rootAfter={$rootExistsAfter} filesBefore=[{$allFilesBefore}] filesAfter=[{$allFilesAfter}]";
-
-    expect($report)->toBe('___DIAGNOSTIC___');
+    expect(implode(' || ', $GLOBALS['diag']))->toBe('___DIAGNOSTIC___');
 });

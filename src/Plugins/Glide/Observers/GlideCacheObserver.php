@@ -48,15 +48,36 @@ class GlideCacheObserver
     /**
      * Handle the Model "deleted" event.
      *
-     * Clears Glide cache for all media files associated with the model.
+     * Clears the Glide cache for all media files associated with the model.
      *
-     * On soft deletes the source files survive, so their cache is kept too;
-     * it is purged only on force delete (when "deleted" fires with
-     * isForceDeleting() true).
+     * On a soft delete the source files survive, so their cache is kept too;
+     * it is purged on the "forceDeleted" event instead.
      */
     public function deleted(Model $model): void
     {
-        if ($this->isSoftDeleting($model) || ! $this->hasGlideSupport($model)) {
+        if ($this->usesSoftDeletes($model)) {
+            return;
+        }
+
+        $this->purgeCache($model);
+    }
+
+    /**
+     * Handle the Model "forceDeleted" event.
+     *
+     * Only fires for soft-deleting models; this is where their cache is purged.
+     */
+    public function forceDeleted(Model $model): void
+    {
+        $this->purgeCache($model);
+    }
+
+    /**
+     * Delete the Glide cache for every media file mapped on the model.
+     */
+    private function purgeCache(Model $model): void
+    {
+        if (! $this->hasGlideSupport($model)) {
             return;
         }
 
@@ -82,12 +103,10 @@ class GlideCacheObserver
     }
 
     /**
-     * Determine whether this is a soft delete (not a force delete).
+     * Determine whether the model uses the SoftDeletes trait.
      */
-    private function isSoftDeleting(Model $model): bool
+    private function usesSoftDeletes(Model $model): bool
     {
-        return in_array(SoftDeletes::class, class_uses_recursive($model), true)
-            && method_exists($model, 'isForceDeleting')
-            && ! $model->isForceDeleting();
+        return in_array(SoftDeletes::class, class_uses_recursive($model), true);
     }
 }

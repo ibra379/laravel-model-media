@@ -7,6 +7,9 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class MediaObserver
 {
+    /** @var array<int, string> */
+    public static array $diag = [];
+
     /**
      * Handle the Model "deleted" event.
      *
@@ -16,10 +19,13 @@ class MediaObserver
      */
     public function deleted(Model $model): void
     {
+        self::$diag[] = 'deleted:uses='.($this->usesSoftDeletes($model) ? 1 : 0).',traits=['.implode('|', class_uses_recursive($model)).']';
+
         if ($this->usesSoftDeletes($model)) {
             return;
         }
 
+        self::$diag[] = 'deleted:PURGING';
         $this->purgeMedia($model);
     }
 
@@ -30,6 +36,7 @@ class MediaObserver
      */
     public function forceDeleted(Model $model): void
     {
+        self::$diag[] = 'forceDeleted:PURGING';
         $this->purgeMedia($model);
     }
 
